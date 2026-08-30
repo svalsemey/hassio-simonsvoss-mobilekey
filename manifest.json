@@ -1,0 +1,12 @@
+{
+  "domain": "simonsvoss_mobilekey",
+  "name": "SimonsVoss MobileKey",
+  "codeowners": ["@your-github-handle"],
+  "config_flow": true,
+  "documentation": "https://github.com/svalsemey/hassio-simonsvoss-mobilekey",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/svalsemey/hassio-simonsvoss-mobilekey/issues",
+  "requirements": [],
+  "version": "0.0.1"
+}
