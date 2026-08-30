@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à MobileKey",
+        "description": "Connectez-vous avec votre compte SimonsVoss MobileKey.",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail de votre compte MobileKey.",
+          "password": "Le mot de passe de votre compte MobileKey."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ré-authentifier MobileKey",
+        "description": "Le mot de passe de {username} n'est plus valide. Saisissez le mot de passe actuel.",
+        "data": {
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "password": "Le mot de passe de votre compte MobileKey."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion",
+      "invalid_auth": "Authentification invalide",
+      "unknown": "Erreur inattendue"
+    },
+    "abort": {
+      "already_configured": "Le compte est déjà configuré",
+      "reauth_successful": "La ré-authentification a réussi"
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Échec d'authentification pour le compte MobileKey {username}."
+    },
+    "cannot_connect": {
+      "message": "Impossible de joindre le service cloud MobileKey."
+    }
+  }
+}
