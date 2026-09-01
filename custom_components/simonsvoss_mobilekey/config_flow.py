@@ -36,25 +36,31 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def _async_validate_credentials(
         self, username: str, password: str
-    ) -> dict[str, str]:
-        """Check the credentials against the cloud and return form errors."""
+    ) -> tuple[dict[str, str], str]:
+        """Check the credentials against the cloud.
+
+        Return the form errors and the locking system name, which doubles
+        as proof that the account data is reachable.
+        """
         # A throwaway session keeps validation cookies out of any shared jar.
         session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
-            await MobileKeyApiClient(username, password, session).async_authenticate()
+            system = await MobileKeyApiClient(
+                username, password, session
+            ).async_get_locking_system()
         except MobileKeyAuthenticationError:
-            return {"base": "invalid_auth"}
+            return {"base": "invalid_auth"}, ""
         except MobileKeyConnectionError:
-            return {"base": "cannot_connect"}
+            return {"base": "cannot_connect"}, ""
         except Exception:
             _LOGGER.exception("Unexpected error while validating credentials")
-            return {"base": "unknown"}
+            return {"base": "unknown"}, ""
         finally:
             # Sessions from the helper share the Home Assistant connector and
             # replace close() with a safeguard; detaching is the supported way
             # to release the session while leaving the connector running.
             session.detach()
-        return {}
+        return {}, system.name
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -65,12 +71,12 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
             username = user_input[CONF_USERNAME].strip()
             await self.async_set_unique_id(username.lower())
             self._abort_if_unique_id_configured()
-            errors = await self._async_validate_credentials(
+            errors, system_name = await self._async_validate_credentials(
                 username, user_input[CONF_PASSWORD]
             )
             if not errors:
                 return self.async_create_entry(
-                    title=username,
+                    title=system_name or username,
                     data={
                         CONF_USERNAME: username,
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
@@ -93,7 +99,7 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         reauth_entry = self._get_reauth_entry()
         if user_input is not None:
-            errors = await self._async_validate_credentials(
+            errors, _ = await self._async_validate_credentials(
                 reauth_entry.data[CONF_USERNAME], user_input[CONF_PASSWORD]
             )
             if not errors:

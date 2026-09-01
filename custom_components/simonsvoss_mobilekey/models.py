@@ -319,6 +319,16 @@ class MobileKeyLockingSystem:
             None,
         )
 
+    def authorized_media(self, lock_id: int) -> tuple[MobileKeyIdentMedium, ...]:
+        """Return the ident media granted access to the given lock."""
+        return tuple(
+            medium
+            for authorization in self.authorizations
+            if authorization.lock_id == lock_id
+            and authorization.granted
+            and (medium := self.ident_media.get(authorization.ekey_id)) is not None
+        )
+
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
         """Build the locking system from its API representation."""

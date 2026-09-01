@@ -1,6 +1,23 @@
 {
   "entity": {
+    "button": {
+      "open": {
+        "default": "mdi:lock-open"
+      },
+      "read_audit_trail": {
+        "default": "mdi:text-box"
+      }
+    },
     "sensor": {
+      "ident_medium_id": {
+        "default": "mdi:identifier"
+      },
+      "ident_medium_name": {
+        "default": "mdi:tag-text"
+      },
+      "mobile_key_id": {
+        "default": "mdi:identifier"
+      },
       "signal_quality": {
         "default": "mdi:signal",
         "state": {

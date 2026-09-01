@@ -15,3 +15,6 @@ USER_AGENT: Final = "ktor-client"
 
 # Endpoint returning the full locking system state in a single call.
 LOAD_LOCKING_SYSTEM_ENDPOINT: Final = f"{API_BASE_URL}/lock-system/loadLockingSystem/"
+
+# Endpoint executing lock commands (remote opening, audit trail readout).
+PERFORM_REQUEST_ENDPOINT: Final = f"{API_BASE_URL}/lock-system/performRequest"

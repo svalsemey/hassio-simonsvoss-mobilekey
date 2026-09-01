@@ -1,6 +1,7 @@
 """Asynchronous client for the SimonsVoss MobileKey cloud service."""
 
 import asyncio
+from datetime import UTC, datetime
 from http import HTTPStatus
 import logging
 import time
@@ -23,6 +24,7 @@ from .const import (
     AUTH_METHOD,
     CF_BM_COOKIE,
     LOAD_LOCKING_SYSTEM_ENDPOINT,
+    PERFORM_REQUEST_ENDPOINT,
     USER_AGENT,
 )
 from .models import MobileKeyLockingSystem
@@ -59,6 +61,13 @@ _DEFAULT_HEADERS: Final[dict[str, str]] = {
     hdrs.CONNECTION: "keep-alive",
 }
 
+# Assembly-qualified DTO type names accepted by the perform-request endpoint.
+_DTO_ASSEMBLY: Final = "SimonsVoss.Soho.Services.UserGate"
+_DTO_OPEN_LOCK_REQUEST: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASSEMBLY}"
+_DTO_READ_AUDIT_TRAIL_REQUEST: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.ReadAuditTrailRequest, {_DTO_ASSEMBLY}"
+)
+
 
 class MobileKeyError(Exception):
     """Base exception for all MobileKey client errors."""
@@ -70,6 +79,20 @@ class MobileKeyConnectionError(MobileKeyError):
 
 class MobileKeyAuthenticationError(MobileKeyError):
     """Raised when the MobileKey cloud rejects the credentials or session."""
+
+
+def _naive_local_timestamp() -> str:
+    """Return the current local time as a naive ISO 8601 timestamp.
+
+    Command payloads carry a ``version`` timestamp formatted like the ones
+    reported by the cloud: local time, second precision, no UTC offset.
+    """
+    return (
+        datetime.now(UTC)
+        .astimezone()
+        .replace(tzinfo=None)
+        .isoformat(timespec="seconds")
+    )
 
 
 class MobileKeyApiClient:
@@ -193,6 +216,36 @@ class MobileKeyApiClient:
             raise MobileKeyConnectionError(
                 f"Malformed locking system payload: {err!r}"
             ) from err
+
+    async def async_open_lock(self, lock_id: int) -> None:
+        """Ask the cloud to remotely open the given lock."""
+        await self._async_perform_lock_request(_DTO_OPEN_LOCK_REQUEST, lock_id)
+
+    async def async_read_audit_trail(self, lock_id: int) -> None:
+        """Ask the cloud to read out the audit trail of the given lock."""
+        await self._async_perform_lock_request(_DTO_READ_AUDIT_TRAIL_REQUEST, lock_id)
+
+    async def _async_perform_lock_request(self, dto_type: str, lock_id: int) -> None:
+        """Submit a lock command to the perform-request endpoint.
+
+        Commands are queued by the cloud and relayed asynchronously to the
+        lock by its SmartBridge; a successful response only acknowledges
+        that the command was accepted.
+        """
+        response = await self.async_request(
+            hdrs.METH_POST,
+            PERFORM_REQUEST_ENDPOINT,
+            json={
+                "$type": dto_type,
+                "version": _naive_local_timestamp(),
+                "lockID": lock_id,
+            },
+        )
+        response.release()
+        if response.status != HTTPStatus.OK:
+            raise MobileKeyConnectionError(
+                f"Unexpected HTTP {response.status} from perform-request endpoint"
+            )
 
     async def _async_request_json(self, method: str, url: str, **kwargs: Any) -> Any:
         """Send an authenticated request and return the decoded JSON body."""

@@ -6,8 +6,9 @@ from typing import Final
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_USERNAME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import (
@@ -23,6 +24,11 @@ _LOGGER = logging.getLogger(__name__)
 # Polling period of the cloud service, kept conservative to stay close to
 # the request rate of the mobile application.
 _UPDATE_INTERVAL: Final = timedelta(seconds=60)
+
+# Device slug templates, shared by device identifiers and entity unique IDs.
+LOCK_SLUG: Final = "lock_{}"
+SMART_BRIDGE_SLUG: Final = "smartbridge_{}"
+IDENT_MEDIUM_SLUG: Final = "identmedium_{}"
 
 type MobileKeyConfigEntry = ConfigEntry[MobileKeyCoordinator]
 
@@ -57,10 +63,14 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
         """
         return self.config_entry.unique_id or self.config_entry.entry_id
 
+    def device_identifier(self, slug: str) -> tuple[str, str]:
+        """Return the registry identifier of the device with the given slug."""
+        return (DOMAIN, f"{self.unique_base}_{slug}")
+
     async def _async_update_data(self) -> MobileKeyLockingSystem:
         """Fetch the current locking system state from the cloud."""
         try:
-            return await self.client.async_get_locking_system()
+            system = await self.client.async_get_locking_system()
         except MobileKeyAuthenticationError as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
@@ -74,3 +84,31 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
                 translation_domain=DOMAIN,
                 translation_key="cannot_connect",
             ) from err
+        self._async_prune_stale_devices(system)
+        return system
+
+    @callback
+    def _async_prune_stale_devices(self, system: MobileKeyLockingSystem) -> None:
+        """Remove registry devices no longer reported by the locking system.
+
+        The cloud always returns the full installation, so any registered
+        device missing from the payload has been deleted; removing it also
+        cascades the removal of its entities.
+        """
+        identifiers = {
+            self.device_identifier(slug.format(item_id))
+            for slug, item_ids in (
+                (LOCK_SLUG, system.locks),
+                (SMART_BRIDGE_SLUG, system.smart_bridges),
+                (IDENT_MEDIUM_SLUG, system.ident_media),
+            )
+            for item_id in item_ids
+        }
+        device_registry = dr.async_get(self.hass)
+        for device in dr.async_entries_for_config_entry(
+            device_registry, self.config_entry.entry_id
+        ):
+            if device.identifiers.isdisjoint(identifiers):
+                device_registry.async_update_device(
+                    device.id, remove_config_entry_id=self.config_entry.entry_id
+                )

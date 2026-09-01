@@ -35,7 +35,24 @@
     }
   },
   "entity": {
+    "button": {
+      "open": {
+        "name": "Open"
+      },
+      "read_audit_trail": {
+        "name": "Read access list"
+      }
+    },
     "sensor": {
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Name"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey ID"
+      },
       "signal_quality": {
         "name": "Signal quality",
         "state": {
@@ -53,6 +70,9 @@
     },
     "cannot_connect": {
       "message": "Could not reach the MobileKey cloud service."
+    },
+    "lock_command_failed": {
+      "message": "Could not send the command to the lock {name}."
     }
   }
 }

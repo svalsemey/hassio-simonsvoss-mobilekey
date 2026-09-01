@@ -1,7 +1,7 @@
 """The MobileKey integration."""
 
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
@@ -9,7 +9,7 @@ from .api import MobileKeyApiClient
 from .coordinator import MobileKeyConfigEntry, MobileKeyCoordinator
 from .entity import smart_bridge_device_info
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -> bool:
@@ -32,18 +32,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) ->
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
 
-    # Register SmartBridge devices before the platforms create lock devices
-    # referencing them through via_device. Root gateways are registered
-    # first so repeater SmartBridges can reference their parent.
     device_registry = dr.async_get(hass)
-    for bridge in sorted(
-        coordinator.data.smart_bridges.values(),
-        key=lambda bridge: bridge.parent_chip_id is not None,
-    ):
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            **smart_bridge_device_info(coordinator, bridge),
-        )
+
+    @callback
+    def _async_register_smart_bridges() -> None:
+        """Register SmartBridge devices, roots first so via_device resolves."""
+        for bridge in sorted(
+            coordinator.data.smart_bridges.values(),
+            key=lambda bridge: bridge.parent_chip_id is not None,
+        ):
+            device_registry.async_get_or_create(
+                config_entry_id=entry.entry_id,
+                **smart_bridge_device_info(coordinator, bridge),
+            )
+
+    # SmartBridge devices must exist before lock entities reference them
+    # through via_device. Registered ahead of the platform listeners, this
+    # listener also runs first on every refresh, covering SmartBridges
+    # appearing later and keeping their registry name up to date.
+    _async_register_smart_bridges()
+    entry.async_on_unload(coordinator.async_add_listener(_async_register_smart_bridges))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

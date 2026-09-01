@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -13,8 +14,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import MobileKeyConfigEntry
-from .entity import MobileKeyLockEntity, MobileKeySmartBridgeEntity
-from .models import MobileKeyDoorStatus, MobileKeyLock, MobileKeySmartBridge
+from .entity import (
+    MobileKeyLockEntity,
+    MobileKeySmartBridgeEntity,
+    async_setup_dynamic_entities,
+)
+from .models import (
+    MobileKeyDoorStatus,
+    MobileKeyLock,
+    MobileKeyLockingSystem,
+    MobileKeySmartBridge,
+)
 
 # All states come from the coordinator, no per-entity update is performed.
 PARALLEL_UPDATES = 0
@@ -26,6 +36,9 @@ class MobileKeyLockBinarySensorDescription(BinarySensorEntityDescription):
 
     is_on_fn: Callable[[MobileKeyLock], bool | None]
     exists_fn: Callable[[MobileKeyLock], bool] = lambda _: True
+    attributes_fn: (
+        Callable[[MobileKeyLock, MobileKeyLockingSystem], dict[str, Any]] | None
+    ) = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -42,7 +55,34 @@ def _door_open(lock: MobileKeyLock) -> bool | None:
     return lock.door.door_status is MobileKeyDoorStatus.OPEN
 
 
+def _lock_unlocked(lock: MobileKeyLock) -> bool | None:
+    """Return whether the bolt is unlocked, or None when not reported."""
+    if lock.door is None or lock.door.door_status is MobileKeyDoorStatus.UNKNOWN:
+        return None
+    return lock.door.door_status is not MobileKeyDoorStatus.CLOSED_LOCKED
+
+
+def _authorization_attributes(
+    lock: MobileKeyLock, system: MobileKeyLockingSystem
+) -> dict[str, Any]:
+    """Return the names of the keys granted access to the lock."""
+    return {
+        "authorized_keys": sorted(
+            medium.name for medium in system.authorized_media(lock.id)
+        )
+    }
+
+
 LOCK_DESCRIPTIONS: tuple[MobileKeyLockBinarySensorDescription, ...] = (
+    # The lock entity exists on every lock device: it carries the
+    # authorization attributes even when no door monitoring component
+    # reports the bolt state.
+    MobileKeyLockBinarySensorDescription(
+        key="lock",
+        device_class=BinarySensorDeviceClass.LOCK,
+        is_on_fn=_lock_unlocked,
+        attributes_fn=_authorization_attributes,
+    ),
     MobileKeyLockBinarySensorDescription(
         key="door",
         device_class=BinarySensorDeviceClass.DOOR,
@@ -80,19 +120,24 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up MobileKey binary sensors from a config entry."""
-    coordinator = entry.runtime_data
-    async_add_entities(
-        [
+    async_setup_dynamic_entities(
+        entry,
+        async_add_entities,
+        lambda system: system.smart_bridges,
+        lambda coordinator, bridge: (
             MobileKeySmartBridgeBinarySensor(coordinator, description, bridge)
-            for bridge in coordinator.data.smart_bridges.values()
             for description in SMART_BRIDGE_DESCRIPTIONS
-        ]
-        + [
+        ),
+    )
+    async_setup_dynamic_entities(
+        entry,
+        async_add_entities,
+        lambda system: system.locks,
+        lambda coordinator, lock: (
             MobileKeyLockBinarySensor(coordinator, description, lock)
-            for lock in coordinator.data.locks.values()
             for description in LOCK_DESCRIPTIONS
             if description.exists_fn(lock)
-        ]
+        ),
     )
 
 
@@ -105,6 +150,13 @@ class MobileKeyLockBinarySensor(MobileKeyLockEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
         return self.entity_description.is_on_fn(self.lock)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional attributes describing the lock."""
+        if (attributes_fn := self.entity_description.attributes_fn) is None:
+            return None
+        return attributes_fn(self.lock, self.coordinator.data)
 
 
 class MobileKeySmartBridgeBinarySensor(MobileKeySmartBridgeEntity, BinarySensorEntity):

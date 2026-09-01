@@ -35,7 +35,24 @@
     }
   },
   "entity": {
+    "button": {
+      "open": {
+        "name": "Ouvrir"
+      },
+      "read_audit_trail": {
+        "name": "Lire la liste d’accès"
+      }
+    },
     "sensor": {
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Nom"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey ID"
+      },
       "signal_quality": {
         "name": "Qualité du signal",
         "state": {
@@ -53,6 +70,9 @@
     },
     "cannot_connect": {
       "message": "Impossible de joindre le service cloud MobileKey."
+    },
+    "lock_command_failed": {
+      "message": "Impossible d'envoyer la commande à la serrure {name}."
     }
   }
 }
