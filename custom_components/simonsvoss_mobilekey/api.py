@@ -1,12 +1,10 @@
 """Asynchronous client for the SimonsVoss MobileKey cloud service."""
 
-from __future__ import annotations
-
 import asyncio
+from http import HTTPStatus
 import logging
 import time
-from http import HTTPStatus
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from aiohttp import (
     BasicAuth,
@@ -18,7 +16,17 @@ from aiohttp import (
 )
 from yarl import URL
 
-from .const import API_BASE_URL, AUTH_COOKIE, AUTH_ENDPOINT, AUTH_METHOD, USER_AGENT
+from .const import (
+    API_BASE_URL,
+    AUTH_COOKIE,
+    AUTH_ENDPOINT,
+    AUTH_METHOD,
+    CF_BM_COOKIE,
+    USER_AGENT,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import KeysView
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +40,12 @@ _REQUEST_TIMEOUT: Final = ClientTimeout(total=30)
 _AUTH_GRACE_PERIOD: Final = 5.0
 
 # HTTP statuses indicating a missing, expired or revoked session.
-_AUTH_FAILED_STATUS: Final = frozenset(
-    {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}
-)
+_AUTH_FAILED_STATUS: Final = frozenset({HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN})
+
+# Cookies that must all be unexpired for requests to be accepted by the
+# cloud: the session cookie and the Cloudflare bot-management cookie,
+# which is issued with a lifetime of roughly thirty minutes.
+_REQUIRED_COOKIES: Final = frozenset({AUTH_COOKIE, CF_BM_COOKIE})
 
 
 class MobileKeyError(Exception):
@@ -55,23 +66,37 @@ class MobileKeyApiClient:
     Authentication is performed with HTTP Basic credentials and yields the
     ``mk-auth`` session cookie, along with the Cloudflare ``__cf_bm`` and
     ``_cfuvid`` cookies. All of them are persisted in the session cookie jar
-    and automatically sent back on every subsequent request, mirroring the
-    behavior of the official iOS application.
+    and automatically sent back on every subsequent request.
+    Cookie lifetime is handled at two levels: the jar transparently stores
+    every refreshed ``__cf_bm`` issued by Cloudflare on regular responses,
+    and a request attempted after a required cookie has expired triggers a
+    re-authentication first, which reissues the full cookie set.
     """
 
-    def __init__(
-        self, username: str, password: str, session: ClientSession
-    ) -> None:
+    def __init__(self, username: str, password: str, session: ClientSession) -> None:
         """Initialize the client with account credentials and an HTTP session."""
         self._basic_auth = BasicAuth(username, password)
         self._session = session
         self._auth_lock = asyncio.Lock()
         self._authenticated_at: float | None = None
 
+    def _unexpired_cookie_names(self) -> KeysView[str]:
+        """Return the names of the unexpired cookies held for the API host.
+
+        Filtering the jar purges expired cookies, so a cookie past its
+        expiration time is absent from the returned view.
+        """
+        return self._session.cookie_jar.filter_cookies(_BASE_URL).keys()
+
     @property
     def authenticated(self) -> bool:
-        """Return whether a session cookie is currently held for the API host."""
-        return AUTH_COOKIE in self._session.cookie_jar.filter_cookies(_BASE_URL)
+        """Return whether an unexpired session cookie is held for the API host."""
+        return AUTH_COOKIE in self._unexpired_cookie_names()
+
+    @property
+    def _session_fresh(self) -> bool:
+        """Return whether every cookie required by the cloud is unexpired."""
+        return _REQUIRED_COOKIES.issubset(self._unexpired_cookie_names())
 
     async def async_authenticate(self) -> None:
         """Authenticate with the cloud and store the session cookies.
@@ -85,7 +110,10 @@ class MobileKeyApiClient:
                 and time.monotonic() - self._authenticated_at < _AUTH_GRACE_PERIOD
                 and self.authenticated
             ):
-                # A concurrent caller just refreshed the session: reuse it.
+                # Trust a session freshly obtained by a concurrent caller:
+                # repeating the login immediately would not yield different
+                # cookies, and a Cloudflare cookie still missing here is
+                # reissued by upcoming responses anyway.
                 return
 
             response = await self._async_raw_request(
@@ -116,7 +144,9 @@ class MobileKeyApiClient:
         self, method: str, url: str, **kwargs: Any
     ) -> ClientResponse:
         """Send an authenticated request, renewing the session once if expired."""
-        if not self.authenticated:
+        # Renew the session proactively when a required cookie has expired,
+        # e.g. the Cloudflare cookie after a long idle period.
+        if not self._session_fresh:
             await self.async_authenticate()
 
         response = await self._async_raw_request(method, url, **kwargs)
@@ -124,9 +154,7 @@ class MobileKeyApiClient:
             return response
 
         # The session cookie was rejected, most likely expired: renew it once.
-        _LOGGER.debug(
-            "Got HTTP %s from %s, renewing the session", response.status, url
-        )
+        _LOGGER.debug("Got HTTP %s from %s, renewing the session", response.status, url)
         response.release()
         await self.async_authenticate()
 
@@ -142,11 +170,12 @@ class MobileKeyApiClient:
         self, method: str, url: str, **kwargs: Any
     ) -> ClientResponse:
         """Send a request, translating transport failures into client errors."""
+        # Caller-supplied headers are merged over the default user agent.
+        kwargs["headers"] = {hdrs.USER_AGENT: USER_AGENT, **kwargs.get("headers", {})}
         try:
             return await self._session.request(
                 method,
                 url,
-                headers={hdrs.USER_AGENT: USER_AGENT},
                 timeout=_REQUEST_TIMEOUT,
                 **kwargs,
             )

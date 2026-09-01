@@ -1,7 +1,5 @@
 """The MobileKey integration."""
 
-from __future__ import annotations
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
@@ -20,9 +18,7 @@ PLATFORMS: list[Platform] = []
 type MobileKeyConfigEntry = ConfigEntry[MobileKeyApiClient]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: MobileKeyConfigEntry
-) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -> bool:
     """Set up MobileKey from a config entry."""
     # A dedicated session gives this entry its own cookie jar for the
     # mk-auth and Cloudflare cookies; it is closed automatically on unload.
@@ -51,8 +47,6 @@ async def async_setup_entry(
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: MobileKeyConfigEntry
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -> bool:
     """Unload a MobileKey config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

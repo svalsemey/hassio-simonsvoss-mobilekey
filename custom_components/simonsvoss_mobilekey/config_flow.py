@@ -1,9 +1,7 @@
 """Config flow for the MobileKey integration."""
 
-from __future__ import annotations
-
-import logging
 from collections.abc import Mapping
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -48,11 +46,14 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
             return {"base": "invalid_auth"}
         except MobileKeyConnectionError:
             return {"base": "cannot_connect"}
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.exception("Unexpected error while validating credentials")
             return {"base": "unknown"}
         finally:
-            await session.close()
+            # Sessions from the helper share the Home Assistant connector and
+            # replace close() with a safeguard; detaching is the supported way
+            # to release the session while leaving the connector running.
+            session.detach()
         return {}
 
     async def async_step_user(
