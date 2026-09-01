@@ -22,8 +22,10 @@ from .const import (
     AUTH_ENDPOINT,
     AUTH_METHOD,
     CF_BM_COOKIE,
+    LOAD_LOCKING_SYSTEM_ENDPOINT,
     USER_AGENT,
 )
+from .models import MobileKeyLockingSystem
 
 if TYPE_CHECKING:
     from collections.abc import KeysView
@@ -46,6 +48,16 @@ _AUTH_FAILED_STATUS: Final = frozenset({HTTPStatus.UNAUTHORIZED, HTTPStatus.FORB
 # cloud: the session cookie and the Cloudflare bot-management cookie,
 # which is issued with a lifetime of roughly thirty minutes.
 _REQUIRED_COOKIES: Final = frozenset({AUTH_COOKIE, CF_BM_COOKIE})
+
+# Headers sent with every request to the cloud, mirroring those of the
+# MobileKey mobile application. Callers may override any of them.
+_DEFAULT_HEADERS: Final[dict[str, str]] = {
+    hdrs.USER_AGENT: USER_AGENT,
+    hdrs.ACCEPT: "application/json",
+    hdrs.CONTENT_TYPE: "application/json",
+    hdrs.ACCEPT_ENCODING: "gzip, deflate, br",
+    hdrs.CONNECTION: "keep-alive",
+}
 
 
 class MobileKeyError(Exception):
@@ -166,12 +178,41 @@ class MobileKeyApiClient:
             )
         return response
 
+    async def async_get_locking_system(self) -> MobileKeyLockingSystem:
+        """Fetch the full state of the locking system in a single call."""
+        # MobileKey client errors from the request helper propagate as-is;
+        # only payloads not matching the documented schema are translated,
+        # so callers treat them as retryable communication failures.
+        try:
+            return MobileKeyLockingSystem.from_api(
+                await self._async_request_json(
+                    hdrs.METH_GET, LOAD_LOCKING_SYSTEM_ENDPOINT
+                )
+            )
+        except (AttributeError, KeyError, TypeError, ValueError) as err:
+            raise MobileKeyConnectionError(
+                f"Malformed locking system payload: {err!r}"
+            ) from err
+
+    async def _async_request_json(self, method: str, url: str, **kwargs: Any) -> Any:
+        """Send an authenticated request and return the decoded JSON body."""
+        response = await self.async_request(method, url, **kwargs)
+        async with response:
+            if response.status != HTTPStatus.OK:
+                raise MobileKeyConnectionError(
+                    f"Unexpected HTTP {response.status} from {url}"
+                )
+            try:
+                return await response.json()
+            except (TimeoutError, ClientError, ValueError) as err:
+                raise MobileKeyConnectionError(f"Invalid JSON body from {url}") from err
+
     async def _async_raw_request(
         self, method: str, url: str, **kwargs: Any
     ) -> ClientResponse:
         """Send a request, translating transport failures into client errors."""
-        # Caller-supplied headers are merged over the default user agent.
-        kwargs["headers"] = {hdrs.USER_AGENT: USER_AGENT, **kwargs.get("headers", {})}
+        # Caller-supplied headers are merged over the defaults.
+        kwargs["headers"] = {**_DEFAULT_HEADERS, **kwargs.get("headers", {})}
         try:
             return await self._session.request(
                 method,

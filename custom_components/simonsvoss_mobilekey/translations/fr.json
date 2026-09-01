@@ -34,6 +34,19 @@
       "reauth_successful": "La ré-authentification a réussi"
     }
   },
+  "entity": {
+    "sensor": {
+      "signal_quality": {
+        "name": "Qualité du signal",
+        "state": {
+          "none": "Pas de signal",
+          "weak": "Faible",
+          "good": "Bonne",
+          "excellent": "Excellente"
+        }
+      }
+    }
+  },
   "exceptions": {
     "auth_failed": {
       "message": "Échec d'authentification pour le compte MobileKey {username}."

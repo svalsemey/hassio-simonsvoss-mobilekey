@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "sensor": {
+      "signal_quality": {
+        "default": "mdi:signal",
+        "state": {
+          "none": "mdi:signal-off",
+          "weak": "mdi:signal-cellular-1",
+          "good": "mdi:signal-cellular-2",
+          "excellent": "mdi:signal-cellular-3"
+        }
+      }
+    }
+  }
+}

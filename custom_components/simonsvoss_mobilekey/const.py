@@ -12,3 +12,6 @@ AUTH_METHOD: Final = "GET"
 AUTH_COOKIE: Final = "mk-auth"
 CF_BM_COOKIE: Final = "__cf_bm"  # Name of the Cloudflare bot-management cookie, issued with an expiration.
 USER_AGENT: Final = "ktor-client"
+
+# Endpoint returning the full locking system state in a single call.
+LOAD_LOCKING_SYSTEM_ENDPOINT: Final = f"{API_BASE_URL}/lock-system/loadLockingSystem/"
