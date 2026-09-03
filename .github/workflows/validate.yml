@@ -1,0 +1,46 @@
+name: Validate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: HACS action
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  json-validate:
+    name: Validate translation JSON
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Validate JSON files under translations
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          set -e
+          if [ -d "custom_components/simonsvoss_mobilekey/translations" ]; then
+            find custom_components/simonsvoss_mobilekey/translations -type f -name "*.json" -print0 | xargs -0 -n1 jq empty
+          else
+            echo "No translations directory found; skipping."
+          fi
