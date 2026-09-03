@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Final
 
 from homeassistant.core import callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -13,6 +13,7 @@ from .coordinator import (
     IDENT_MEDIUM_SLUG,
     LOCK_SLUG,
     SMART_BRIDGE_SLUG,
+    SYSTEM_SLUG,
     MobileKeyConfigEntry,
     MobileKeyCoordinator,
 )
@@ -58,6 +59,21 @@ def async_setup_dynamic_entities[ItemT](
     entry.async_on_unload(coordinator.async_add_listener(_async_sync_entities))
 
 
+def system_device_info(coordinator: MobileKeyCoordinator) -> DeviceInfo:
+    """Build the device registry description of the locking system.
+
+    The installation is materialized as a service device carrying
+    system-wide entities and anchoring the device hierarchy.
+    """
+    return DeviceInfo(
+        identifiers={coordinator.device_identifier(SYSTEM_SLUG)},
+        entry_type=DeviceEntryType.SERVICE,
+        manufacturer=MANUFACTURER,
+        model="MobileKey locking system",
+        name=coordinator.data.name,
+    )
+
+
 def smart_bridge_device_info(
     coordinator: MobileKeyCoordinator, bridge: MobileKeySmartBridge
 ) -> DeviceInfo:
@@ -70,6 +86,8 @@ def smart_bridge_device_info(
         model="SmartBridge",
         name=bridge.name,
         serial_number=bridge.chip_id,
+        # Root SmartBridges chain to the installation service device.
+        via_device=coordinator.device_identifier(SYSTEM_SLUG),
     )
     # A repeater SmartBridge reports the chip ID of its parent gateway.
     if (
@@ -243,4 +261,16 @@ class MobileKeyIdentMediumEntity(MobileKeyEntity):
         """Return whether the ident medium is still reported by the cloud."""
         return (
             super().available and self._medium_id in self.coordinator.data.ident_media
+        )
+
+
+class MobileKeySystemEntity(MobileKeyEntity):
+    """Base class for entities reporting the state of the locking system."""
+
+    def __init__(
+        self, coordinator: MobileKeyCoordinator, description: EntityDescription
+    ) -> None:
+        """Initialize the entity and attach it to the system device."""
+        super().__init__(
+            coordinator, description, SYSTEM_SLUG, system_device_info(coordinator)
         )

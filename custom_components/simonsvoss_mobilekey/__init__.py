@@ -7,7 +7,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import MobileKeyApiClient
 from .coordinator import MobileKeyConfigEntry, MobileKeyCoordinator
-from .entity import smart_bridge_device_info
+from .entity import smart_bridge_device_info, system_device_info
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
 
@@ -35,8 +35,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) ->
     device_registry = dr.async_get(hass)
 
     @callback
-    def _async_register_smart_bridges() -> None:
-        """Register SmartBridge devices, roots first so via_device resolves."""
+    def _async_register_hub_devices() -> None:
+        """Register the installation and SmartBridge devices.
+
+        The installation service device comes first, then root
+        SmartBridges, so every via_device reference resolves.
+        """
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id, **system_device_info(coordinator)
+        )
         for bridge in sorted(
             coordinator.data.smart_bridges.values(),
             key=lambda bridge: bridge.parent_chip_id is not None,
@@ -46,12 +53,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) ->
                 **smart_bridge_device_info(coordinator, bridge),
             )
 
-    # SmartBridge devices must exist before lock entities reference them
-    # through via_device. Registered ahead of the platform listeners, this
+    # Hub devices must exist before lock entities reference them through
+    # via_device. Registered ahead of the platform listeners, this
     # listener also runs first on every refresh, covering SmartBridges
-    # appearing later and keeping their registry name up to date.
-    _async_register_smart_bridges()
-    entry.async_on_unload(coordinator.async_add_listener(_async_register_smart_bridges))
+    # appearing later and keeping registry names up to date.
+    _async_register_hub_devices()
+    entry.async_on_unload(coordinator.async_add_listener(_async_register_hub_devices))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

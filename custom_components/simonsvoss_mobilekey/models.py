@@ -124,7 +124,7 @@ class MobileKeyDoorMonitoringComponent:
 
     door_status: MobileKeyDoorStatus
     sensor_status: int
-    open_too_long_timeout: int
+    open_too_long_timeout: int | None
     bolt_monitoring_disabled: bool
 
     @classmethod
@@ -294,7 +294,9 @@ class MobileKeyLockingSystem:
     """Full state of a MobileKey locking system."""
 
     name: str
-    version: str
+    # Naive timestamp of the last data change, expressed in the local
+    # time zone of the locking system.
+    version: datetime | None
     locks: Mapping[int, MobileKeyLock]
     ident_media: Mapping[int, MobileKeyIdentMedium]
     smart_bridges: Mapping[int, MobileKeySmartBridge]
@@ -334,7 +336,7 @@ class MobileKeyLockingSystem:
         """Build the locking system from its API representation."""
         return cls(
             name=raw["name"],
-            version=raw["version"],
+            version=_parse_datetime(raw["version"]),
             locks={lock.id: lock for lock in map(MobileKeyLock.from_api, raw["locks"])},
             ident_media={
                 medium.id: medium

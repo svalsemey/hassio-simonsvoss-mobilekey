@@ -35,23 +35,46 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "pending_task": {
+        "name": "Pending programming task"
+      },
+      "permanent_opening": {
+        "name": "Permanent opening"
+      }
+    },
     "button": {
       "open": {
         "name": "Open"
       },
       "read_audit_trail": {
         "name": "Read access list"
+      },
+      "refresh": {
+        "name": "Refresh"
       }
     },
     "sensor": {
+      "door_open_alert_delay": {
+        "name": "Door open alert delay"
+      },
       "ident_medium_id": {
         "name": "ID"
       },
       "ident_medium_name": {
         "name": "Name"
       },
+      "last_update": {
+        "name": "Last update"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
       "mobile_key_id": {
         "name": "MobileKey ID"
+      },
+      "opening_timeout": {
+        "name": "Opening timeout"
       },
       "signal_quality": {
         "name": "Signal quality",

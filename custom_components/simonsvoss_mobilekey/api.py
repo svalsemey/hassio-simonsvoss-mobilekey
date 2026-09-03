@@ -39,6 +39,10 @@ _BASE_URL: Final = URL(API_BASE_URL)
 # Overall timeout applied to every request, including reading the body.
 _REQUEST_TIMEOUT: Final = ClientTimeout(total=30)
 
+# Longer timeout for lock commands: the cloud only answers once the
+# SmartBridge has relayed the command to the lock over the radio.
+_COMMAND_TIMEOUT: Final = ClientTimeout(total=60)
+
 # Period during which a freshly obtained session is trusted, so concurrent
 # callers hitting an expired session do not trigger redundant logins.
 _AUTH_GRACE_PERIOD: Final = 5.0
@@ -240,6 +244,7 @@ class MobileKeyApiClient:
                 "version": _naive_local_timestamp(),
                 "lockID": lock_id,
             },
+            timeout=_COMMAND_TIMEOUT,
         )
         response.release()
         if response.status != HTTPStatus.OK:
@@ -266,13 +271,9 @@ class MobileKeyApiClient:
         """Send a request, translating transport failures into client errors."""
         # Caller-supplied headers are merged over the defaults.
         kwargs["headers"] = {**_DEFAULT_HEADERS, **kwargs.get("headers", {})}
+        kwargs.setdefault("timeout", _REQUEST_TIMEOUT)
         try:
-            return await self._session.request(
-                method,
-                url,
-                timeout=_REQUEST_TIMEOUT,
-                **kwargs,
-            )
+            return await self._session.request(method, url, **kwargs)
         except TimeoutError as err:
             raise MobileKeyConnectionError(
                 "Timeout while contacting the MobileKey cloud"

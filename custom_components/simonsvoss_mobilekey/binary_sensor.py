@@ -97,6 +97,19 @@ LOCK_DESCRIPTIONS: tuple[MobileKeyLockBinarySensorDescription, ...] = (
         exists_fn=lambda lock: lock.core is not None,
     ),
     MobileKeyLockBinarySensorDescription(
+        key="permanent_opening",
+        translation_key="permanent_opening",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=lambda lock: None if lock.core is None else lock.core.flip_flop,
+        exists_fn=lambda lock: lock.core is not None,
+    ),
+    MobileKeyLockBinarySensorDescription(
+        key="pending_task",
+        translation_key="pending_task",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=lambda lock: lock.has_pending_task,
+    ),
+    MobileKeyLockBinarySensorDescription(
         key="connectivity",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,

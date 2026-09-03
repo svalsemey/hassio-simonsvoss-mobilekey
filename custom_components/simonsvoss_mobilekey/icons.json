@@ -1,22 +1,45 @@
 {
   "entity": {
+    "binary_sensor": {
+      "pending_task": {
+        "default": "mdi:progress-wrench"
+      },
+      "permanent_opening": {
+        "default": "mdi:lock-open-variant"
+      }
+    },
     "button": {
       "open": {
         "default": "mdi:lock-open"
       },
       "read_audit_trail": {
         "default": "mdi:text-box"
+      },
+      "refresh": {
+        "default": "mdi:refresh"
       }
     },
     "sensor": {
+      "door_open_alert_delay": {
+        "default": "mdi:door-open"
+      },
       "ident_medium_id": {
         "default": "mdi:identifier"
       },
       "ident_medium_name": {
         "default": "mdi:tag-text"
       },
+      "last_update": {
+        "default": "mdi:update"
+      },
+      "lock_id": {
+        "default": "mdi:identifier"
+      },
       "mobile_key_id": {
         "default": "mdi:identifier"
+      },
+      "opening_timeout": {
+        "default": "mdi:timer-outline"
       },
       "signal_quality": {
         "default": "mdi:signal",

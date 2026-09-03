@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Final
 
 from homeassistant.components.sensor import (
@@ -9,21 +10,24 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util import dt as dt_util
 
 from .coordinator import MobileKeyConfigEntry
 from .entity import (
     MobileKeyIdentMediumEntity,
     MobileKeyLockEntity,
     MobileKeySmartBridgeEntity,
+    MobileKeySystemEntity,
     async_setup_dynamic_entities,
 )
 from .models import (
     MobileKeyIdentMedium,
     MobileKeyLock,
+    MobileKeyLockingSystem,
     MobileKeySignalQuality,
     MobileKeySmartBridge,
 )
@@ -41,6 +45,29 @@ _SIGNAL_QUALITY_OPTIONS: Final = [
 def _signal_quality_value(quality: MobileKeySignalQuality) -> str | None:
     """Return the enum option for a signal quality, or None when unknown."""
     return None if quality is MobileKeySignalQuality.UNKNOWN else quality.name.lower()
+
+
+def _door_open_alert_delay(lock: MobileKeyLock) -> int | None:
+    """Return the door-open alert threshold in minutes.
+
+    The cloud reports the threshold minus one minute: the lock raises the
+    alert once the door stays open for longer than the reported value.
+    """
+    if lock.door is None or lock.door.open_too_long_timeout is None:
+        return None
+    return lock.door.open_too_long_timeout + 1
+
+
+def _last_update(system: MobileKeyLockingSystem) -> datetime | None:
+    """Return the data timestamp reported by the cloud, as an aware datetime.
+
+    The cloud reports a naive timestamp in the local time zone of the
+    locking system, which shares the location of this Home Assistant
+    instance.
+    """
+    if system.version is None:
+        return None
+    return system.version.replace(tzinfo=dt_util.get_default_time_zone())
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -65,6 +92,13 @@ class MobileKeyIdentMediumSensorDescription(SensorEntityDescription):
     value_fn: Callable[[MobileKeyIdentMedium], StateType]
 
 
+@dataclass(frozen=True, kw_only=True)
+class MobileKeySystemSensorDescription(SensorEntityDescription):
+    """Describes a sensor attached to the MobileKey locking system."""
+
+    value_fn: Callable[[MobileKeyLockingSystem], datetime | None]
+
+
 LOCK_DESCRIPTIONS: tuple[MobileKeyLockSensorDescription, ...] = (
     MobileKeyLockSensorDescription(
         key="signal_quality",
@@ -78,6 +112,33 @@ LOCK_DESCRIPTIONS: tuple[MobileKeyLockSensorDescription, ...] = (
             else _signal_quality_value(lock.network.quality)
         ),
         exists_fn=lambda lock: lock.network is not None,
+    ),
+    MobileKeyLockSensorDescription(
+        key="id",
+        translation_key="lock_id",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda lock: lock.id,
+    ),
+    MobileKeyLockSensorDescription(
+        key="opening_timeout",
+        translation_key="opening_timeout",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda lock: None if lock.core is None else lock.core.timeout,
+        exists_fn=lambda lock: lock.core is not None,
+    ),
+    # Only created when the door-open alert is configured on the lock.
+    MobileKeyLockSensorDescription(
+        key="door_open_alert_delay",
+        translation_key="door_open_alert_delay",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_door_open_alert_delay,
+        exists_fn=lambda lock: (
+            lock.door is not None and lock.door.open_too_long_timeout is not None
+        ),
     ),
 )
 
@@ -112,6 +173,15 @@ IDENT_MEDIUM_DESCRIPTIONS: tuple[MobileKeyIdentMediumSensorDescription, ...] = (
     ),
 )
 
+SYSTEM_DESCRIPTIONS: tuple[MobileKeySystemSensorDescription, ...] = (
+    MobileKeySystemSensorDescription(
+        key="last_update",
+        translation_key="last_update",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_last_update,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -119,6 +189,11 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up MobileKey sensors from a config entry."""
+    # The system device is unique and permanent: no dynamic tracking.
+    async_add_entities(
+        MobileKeySystemSensor(entry.runtime_data, description)
+        for description in SYSTEM_DESCRIPTIONS
+    )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
@@ -180,3 +255,14 @@ class MobileKeyIdentMediumSensor(MobileKeyIdentMediumEntity, SensorEntity):
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
         return self.entity_description.value_fn(self.ident_medium)
+
+
+class MobileKeySystemSensor(MobileKeySystemEntity, SensorEntity):
+    """Sensor reporting a state of the MobileKey locking system."""
+
+    entity_description: MobileKeySystemSensorDescription
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the state of the sensor."""
+        return self.entity_description.value_fn(self.coordinator.data)

@@ -29,6 +29,8 @@ _UPDATE_INTERVAL: Final = timedelta(seconds=60)
 LOCK_SLUG: Final = "lock_{}"
 SMART_BRIDGE_SLUG: Final = "smartbridge_{}"
 IDENT_MEDIUM_SLUG: Final = "identmedium_{}"
+# Device slug of the service device representing the whole installation.
+SYSTEM_SLUG: Final = "system"
 
 type MobileKeyConfigEntry = ConfigEntry[MobileKeyCoordinator]
 
@@ -93,16 +95,20 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
 
         The cloud always returns the full installation, so any registered
         device missing from the payload has been deleted; removing it also
-        cascades the removal of its entities.
+        cascades the removal of its entities. The service device standing
+        for the installation itself is always kept.
         """
         identifiers = {
-            self.device_identifier(slug.format(item_id))
-            for slug, item_ids in (
-                (LOCK_SLUG, system.locks),
-                (SMART_BRIDGE_SLUG, system.smart_bridges),
-                (IDENT_MEDIUM_SLUG, system.ident_media),
-            )
-            for item_id in item_ids
+            self.device_identifier(SYSTEM_SLUG),
+            *(
+                self.device_identifier(slug.format(item_id))
+                for slug, item_ids in (
+                    (LOCK_SLUG, system.locks),
+                    (SMART_BRIDGE_SLUG, system.smart_bridges),
+                    (IDENT_MEDIUM_SLUG, system.ident_media),
+                )
+                for item_id in item_ids
+            ),
         }
         device_registry = dr.async_get(self.hass)
         for device in dr.async_entries_for_config_entry(
