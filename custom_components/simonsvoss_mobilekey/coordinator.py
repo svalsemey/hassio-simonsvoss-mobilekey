@@ -5,7 +5,7 @@ import logging
 from typing import Final
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_USERNAME
+from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
@@ -16,14 +16,10 @@ from .api import (
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
 )
-from .const import DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 from .models import MobileKeyLockingSystem
 
 _LOGGER = logging.getLogger(__name__)
-
-# Polling period of the cloud service, kept conservative to stay close to
-# the request rate of the mobile application.
-_UPDATE_INTERVAL: Final = timedelta(seconds=60)
 
 # Device slug templates, shared by device identifiers and entity unique IDs.
 LOCK_SLUG: Final = "lock_{}"
@@ -33,6 +29,32 @@ IDENT_MEDIUM_SLUG: Final = "identmedium_{}"
 SYSTEM_SLUG: Final = "system"
 
 type MobileKeyConfigEntry = ConfigEntry[MobileKeyCoordinator]
+
+
+def entry_unique_base(entry: MobileKeyConfigEntry) -> str:
+    """Return the stable prefix shared by device and entity unique IDs.
+
+    The config flow always assigns the account username as the unique
+    ID of the entry; the entry ID fallback only satisfies typing.
+    """
+    return entry.unique_id or entry.entry_id
+
+
+def entry_device_identifier(entry: MobileKeyConfigEntry, slug: str) -> tuple[str, str]:
+    """Return the registry identifier of the device with the given slug."""
+    return (DOMAIN, f"{entry_unique_base(entry)}_{slug}")
+
+
+def device_removed_signal(entry: MobileKeyConfigEntry) -> str:
+    """Return the dispatcher signal sent when the user removes a device."""
+    return f"{DOMAIN}_{entry.entry_id}_device_removed"
+
+
+def _configured_update_interval(entry: MobileKeyConfigEntry) -> timedelta:
+    """Return the polling interval configured in the entry options."""
+    return timedelta(
+        seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    )
 
 
 class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
@@ -52,22 +74,27 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
             _LOGGER,
             config_entry=config_entry,
             name=DOMAIN,
-            update_interval=_UPDATE_INTERVAL,
+            update_interval=_configured_update_interval(config_entry),
         )
         self.client = client
 
     @property
     def unique_base(self) -> str:
-        """Return the stable prefix shared by device and entity unique IDs.
-
-        The config flow always assigns the account username as the unique
-        ID of the entry; the entry ID fallback only satisfies typing.
-        """
-        return self.config_entry.unique_id or self.config_entry.entry_id
+        """Return the stable prefix shared by device and entity unique IDs."""
+        return entry_unique_base(self.config_entry)
 
     def device_identifier(self, slug: str) -> tuple[str, str]:
         """Return the registry identifier of the device with the given slug."""
-        return (DOMAIN, f"{self.unique_base}_{slug}")
+        return entry_device_identifier(self.config_entry, slug)
+
+    @callback
+    def apply_options(self) -> None:
+        """Apply the entry options to the coordinator.
+
+        A new polling interval takes effect once the currently scheduled
+        refresh has fired.
+        """
+        self.update_interval = _configured_update_interval(self.config_entry)
 
     async def _async_update_data(self) -> MobileKeyLockingSystem:
         """Fetch the current locking system state from the cloud."""
@@ -115,6 +142,4 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
             device_registry, self.config_entry.entry_id
         ):
             if device.identifiers.isdisjoint(identifiers):
-                device_registry.async_update_device(
-                    device.id, remove_config_entry_id=self.config_entry.entry_id
-                )
+                device_registry.async_remove_device(device.id)

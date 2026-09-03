@@ -33,8 +33,7 @@ def _dto_type(raw: Mapping[str, Any]) -> str:
 def _parse_datetime(value: str | None) -> datetime | None:
     """Parse an ISO 8601 timestamp, or None when absent or malformed.
 
-    The cloud reports naive timestamps expressed in the local time zone
-    of the locking system.
+    The cloud reports naive timestamps expressed in UTC.
     """
     if value is None:
         return None
@@ -294,8 +293,7 @@ class MobileKeyLockingSystem:
     """Full state of a MobileKey locking system."""
 
     name: str
-    # Naive timestamp of the last data change, expressed in the local
-    # time zone of the locking system.
+    # Naive timestamp of the last data change, expressed in UTC.
     version: datetime | None
     locks: Mapping[int, MobileKeyLock]
     ident_media: Mapping[int, MobileKeyIdentMedium]

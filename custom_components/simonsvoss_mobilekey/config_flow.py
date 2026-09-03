@@ -6,33 +6,97 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    UnitOfTime,
+)
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+)
 
 from .api import (
     MobileKeyApiClient,
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
 )
-from .const import DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, MAX_SCAN_INTERVAL, MIN_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
+
+# Polling interval field, shared by the user step and the options flow.
+_SCAN_INTERVAL_SELECTOR = vol.All(
+    NumberSelector(
+        NumberSelectorConfig(
+            min=MIN_SCAN_INTERVAL,
+            max=MAX_SCAN_INTERVAL,
+            step=1,
+            mode=NumberSelectorMode.BOX,
+            unit_of_measurement=UnitOfTime.SECONDS,
+        )
+    ),
+    vol.Coerce(int),
+)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
+        vol.Required(
+            CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+        ): _SCAN_INTERVAL_SELECTOR,
     }
 )
 
 STEP_REAUTH_DATA_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
+
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required(
+            CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+        ): _SCAN_INTERVAL_SELECTOR,
+    }
+)
+
+
+class MobileKeyOptionsFlow(OptionsFlow):
+    """Handle the options flow for MobileKey."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the MobileKey options."""
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                OPTIONS_SCHEMA, self.config_entry.options
+            ),
+        )
 
 
 class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the configuration flow for MobileKey."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> MobileKeyOptionsFlow:
+        """Create the options flow."""
+        return MobileKeyOptionsFlow()
 
     async def _async_validate_credentials(
         self, username: str, password: str
@@ -81,6 +145,7 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME: username,
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
+                    options={CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]},
                 )
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

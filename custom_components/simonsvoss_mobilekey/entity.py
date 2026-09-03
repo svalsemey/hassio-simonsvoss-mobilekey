@@ -1,10 +1,10 @@
-"""Base entity classes and device descriptions for the MobileKey integration."""
+"""Base entity classes for the MobileKey integration."""
 
 from collections.abc import Callable, Iterable, Mapping
-from typing import Final
 
 from homeassistant.core import callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -16,6 +16,7 @@ from .coordinator import (
     SYSTEM_SLUG,
     MobileKeyConfigEntry,
     MobileKeyCoordinator,
+    device_removed_signal,
 )
 from .models import (
     MobileKeyIdentMedium,
@@ -24,13 +25,12 @@ from .models import (
     MobileKeySmartBridge,
 )
 
-MANUFACTURER: Final = "SimonsVoss"
-
 
 @callback
 def async_setup_dynamic_entities[ItemT](
     entry: MobileKeyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
+    device_slug: str,
     items_fn: Callable[[MobileKeyLockingSystem], Mapping[int, ItemT]],
     entities_fn: Callable[[MobileKeyCoordinator, ItemT], Iterable[Entity]],
 ) -> None:
@@ -39,12 +39,16 @@ def async_setup_dynamic_entities[ItemT](
     The tracked IDs always mirror the latest cloud report, so the entities
     of an item removed and later reintroduced are created anew, its stale
     registry entries having been pruned by the coordinator in between.
+    An item whose device is removed on user request is dropped from the
+    tracking through the dispatcher signal, so its entities are recreated
+    at the next refresh as long as the cloud still reports it.
     """
     coordinator = entry.runtime_data
     known_ids: set[int] = set()
 
     @callback
     def _async_sync_entities() -> None:
+        """Add entities for items not currently tracked."""
         items = items_fn(coordinator.data)
         if new_ids := items.keys() - known_ids:
             async_add_entities(
@@ -55,100 +59,24 @@ def async_setup_dynamic_entities[ItemT](
         known_ids.clear()
         known_ids.update(items.keys())
 
+    @callback
+    def _async_device_removed(identifiers: set[tuple[str, str]]) -> None:
+        """Forget items whose registry device was removed by the user."""
+        known_ids.difference_update(
+            {
+                item_id
+                for item_id in known_ids
+                if coordinator.device_identifier(device_slug.format(item_id))
+                in identifiers
+            }
+        )
+
     _async_sync_entities()
     entry.async_on_unload(coordinator.async_add_listener(_async_sync_entities))
-
-
-def system_device_info(coordinator: MobileKeyCoordinator) -> DeviceInfo:
-    """Build the device registry description of the locking system.
-
-    The installation is materialized as a service device carrying
-    system-wide entities and anchoring the device hierarchy.
-    """
-    return DeviceInfo(
-        identifiers={coordinator.device_identifier(SYSTEM_SLUG)},
-        entry_type=DeviceEntryType.SERVICE,
-        manufacturer=MANUFACTURER,
-        model="MobileKey locking system",
-        name=coordinator.data.name,
-    )
-
-
-def smart_bridge_device_info(
-    coordinator: MobileKeyCoordinator, bridge: MobileKeySmartBridge
-) -> DeviceInfo:
-    """Build the device registry description of a SmartBridge."""
-    info = DeviceInfo(
-        identifiers={
-            coordinator.device_identifier(SMART_BRIDGE_SLUG.format(bridge.id))
-        },
-        manufacturer=MANUFACTURER,
-        model="SmartBridge",
-        name=bridge.name,
-        serial_number=bridge.chip_id,
-        # Root SmartBridges chain to the installation service device.
-        via_device=coordinator.device_identifier(SYSTEM_SLUG),
-    )
-    # A repeater SmartBridge reports the chip ID of its parent gateway.
-    if (
-        parent := coordinator.data.smart_bridge_by_chip_id(bridge.parent_chip_id)
-    ) is not None:
-        info["via_device"] = coordinator.device_identifier(
-            SMART_BRIDGE_SLUG.format(parent.id)
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            coordinator.hass, device_removed_signal(entry), _async_device_removed
         )
-    return info
-
-
-def lock_device_info(
-    coordinator: MobileKeyCoordinator, lock: MobileKeyLock
-) -> DeviceInfo:
-    """Build the device registry description of a lock.
-
-    The catalog order code is the model of every MobileKey device; the
-    model ID is explicitly cleared so the registry never carries a value
-    duplicating it.
-    """
-    info = DeviceInfo(
-        identifiers={coordinator.device_identifier(LOCK_SLUG.format(lock.id))},
-        manufacturer=MANUFACTURER,
-        name=lock.name,
-        model_id=None,
-    )
-    if lock.core is not None:
-        info["model"] = lock.core.order_code
-        info["sw_version"] = lock.core.firmware
-    if lock.network is not None:
-        info["serial_number"] = lock.network.chip_id
-        if (
-            bridge := coordinator.data.smart_bridge_by_chip_id(
-                lock.network.parent_chip_id
-            )
-        ) is not None:
-            info["via_device"] = coordinator.device_identifier(
-                SMART_BRIDGE_SLUG.format(bridge.id)
-            )
-    return info
-
-
-def ident_medium_device_info(
-    coordinator: MobileKeyCoordinator, medium: MobileKeyIdentMedium
-) -> DeviceInfo:
-    """Build the device registry description of an ident medium.
-
-    The catalog order code is the model of every MobileKey device; the
-    model ID and firmware fields are explicitly cleared so the registry
-    never carries values duplicating or supplementing it.
-    """
-    return DeviceInfo(
-        identifiers={
-            coordinator.device_identifier(IDENT_MEDIUM_SLUG.format(medium.id))
-        },
-        manufacturer=MANUFACTURER,
-        name=medium.name,
-        model=medium.order_code,
-        model_id=None,
-        sw_version=None,
-        serial_number=medium.phi,
     )
 
 
@@ -162,15 +90,20 @@ class MobileKeyEntity(CoordinatorEntity[MobileKeyCoordinator]):
         coordinator: MobileKeyCoordinator,
         description: EntityDescription,
         device_slug: str,
-        device_info: DeviceInfo,
     ) -> None:
-        """Initialize the entity and attach it to its device."""
+        """Initialize the entity and attach it to its registry device.
+
+        Devices are created and maintained centrally from the coordinator
+        data, so entities only reference them by identifier.
+        """
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = (
             f"{coordinator.unique_base}_{device_slug}_{description.key}"
         )
-        self._attr_device_info = device_info
+        self._attr_device_info = DeviceInfo(
+            identifiers={coordinator.device_identifier(device_slug)}
+        )
 
 
 class MobileKeyLockEntity(MobileKeyEntity):
@@ -184,12 +117,7 @@ class MobileKeyLockEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the lock device."""
         self._lock_id = lock.id
-        super().__init__(
-            coordinator,
-            description,
-            LOCK_SLUG.format(lock.id),
-            lock_device_info(coordinator, lock),
-        )
+        super().__init__(coordinator, description, LOCK_SLUG.format(lock.id))
 
     @property
     def lock(self) -> MobileKeyLock:
@@ -213,12 +141,7 @@ class MobileKeySmartBridgeEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the SmartBridge device."""
         self._bridge_id = bridge.id
-        super().__init__(
-            coordinator,
-            description,
-            SMART_BRIDGE_SLUG.format(bridge.id),
-            smart_bridge_device_info(coordinator, bridge),
-        )
+        super().__init__(coordinator, description, SMART_BRIDGE_SLUG.format(bridge.id))
 
     @property
     def smart_bridge(self) -> MobileKeySmartBridge:
@@ -244,12 +167,7 @@ class MobileKeyIdentMediumEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the ident medium device."""
         self._medium_id = medium.id
-        super().__init__(
-            coordinator,
-            description,
-            IDENT_MEDIUM_SLUG.format(medium.id),
-            ident_medium_device_info(coordinator, medium),
-        )
+        super().__init__(coordinator, description, IDENT_MEDIUM_SLUG.format(medium.id))
 
     @property
     def ident_medium(self) -> MobileKeyIdentMedium:
@@ -271,6 +189,4 @@ class MobileKeySystemEntity(MobileKeyEntity):
         self, coordinator: MobileKeyCoordinator, description: EntityDescription
     ) -> None:
         """Initialize the entity and attach it to the system device."""
-        super().__init__(
-            coordinator, description, SYSTEM_SLUG, system_device_info(coordinator)
-        )
+        super().__init__(coordinator, description, SYSTEM_SLUG)

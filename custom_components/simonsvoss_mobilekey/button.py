@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api import MobileKeyApiClient, MobileKeyError
 from .const import DOMAIN
-from .coordinator import MobileKeyConfigEntry, MobileKeyCoordinator
+from .coordinator import LOCK_SLUG, MobileKeyConfigEntry, MobileKeyCoordinator
 from .entity import (
     MobileKeyLockEntity,
     MobileKeySystemEntity,
@@ -76,6 +76,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        LOCK_SLUG,
         lambda system: system.locks,
         lambda coordinator, lock: (
             MobileKeyLockButton(coordinator, description, lock)

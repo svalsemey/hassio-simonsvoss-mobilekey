@@ -6,11 +6,13 @@
         "description": "Sign in with your SimonsVoss MobileKey account.",
         "data": {
           "username": "Username",
-          "password": "Password"
+          "password": "Password",
+          "scan_interval": "Polling interval"
         },
         "data_description": {
           "username": "The email address of your MobileKey account.",
-          "password": "The password of your MobileKey account."
+          "password": "The password of your MobileKey account.",
+          "scan_interval": "How often the system state is fetched from the MobileKey cloud, in seconds."
         }
       },
       "reauth_confirm": {
@@ -32,6 +34,19 @@
     "abort": {
       "already_configured": "Account is already configured",
       "reauth_successful": "Re-authentication was successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MobileKey options",
+        "data": {
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "scan_interval": "How often the locking system state is fetched from the MobileKey cloud, in seconds."
+        }
+      }
     }
   },
   "entity": {

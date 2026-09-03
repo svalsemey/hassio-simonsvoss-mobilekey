@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Final
 
 from homeassistant.components.sensor import (
@@ -14,9 +14,13 @@ from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.util import dt as dt_util
 
-from .coordinator import MobileKeyConfigEntry
+from .coordinator import (
+    IDENT_MEDIUM_SLUG,
+    LOCK_SLUG,
+    SMART_BRIDGE_SLUG,
+    MobileKeyConfigEntry,
+)
 from .entity import (
     MobileKeyIdentMediumEntity,
     MobileKeyLockEntity,
@@ -61,13 +65,12 @@ def _door_open_alert_delay(lock: MobileKeyLock) -> int | None:
 def _last_update(system: MobileKeyLockingSystem) -> datetime | None:
     """Return the data timestamp reported by the cloud, as an aware datetime.
 
-    The cloud reports a naive timestamp in the local time zone of the
-    locking system, which shares the location of this Home Assistant
-    instance.
+    The cloud reports a naive timestamp expressed in UTC; attaching the
+    UTC time zone declares it without shifting the value.
     """
     if system.version is None:
         return None
-    return system.version.replace(tzinfo=dt_util.get_default_time_zone())
+    return system.version.replace(tzinfo=UTC)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -197,6 +200,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        SMART_BRIDGE_SLUG,
         lambda system: system.smart_bridges,
         lambda coordinator, bridge: (
             MobileKeySmartBridgeSensor(coordinator, description, bridge)
@@ -206,6 +210,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        LOCK_SLUG,
         lambda system: system.locks,
         lambda coordinator, lock: (
             MobileKeyLockSensor(coordinator, description, lock)
@@ -216,6 +221,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        IDENT_MEDIUM_SLUG,
         lambda system: system.ident_media,
         lambda coordinator, medium: (
             MobileKeyIdentMediumSensor(coordinator, description, medium)

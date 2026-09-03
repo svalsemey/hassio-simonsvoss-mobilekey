@@ -6,11 +6,13 @@
         "description": "Connectez-vous avec votre compte SimonsVoss MobileKey.",
         "data": {
           "username": "Nom d’utilisateur",
-          "password": "Mot de passe"
+          "password": "Mot de passe",
+          "scan_interval": "Intervalle de sondage"
         },
         "data_description": {
           "username": "L’adresse e-mail de votre compte MobileKey.",
-          "password": "Le mot de passe de votre compte MobileKey."
+          "password": "Le mot de passe de votre compte MobileKey.",
+          "scan_interval": "À quelle fréquence l’état du système est récupéré depuis le cloud MobileKey, en secondes."
         }
       },
       "reauth_confirm": {
@@ -32,6 +34,19 @@
     "abort": {
       "already_configured": "Le compte est déjà configuré",
       "reauth_successful": "La ré-authentification a réussi"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options MobileKey",
+        "data": {
+          "scan_interval": "Intervalle de sondage"
+        },
+        "data_description": {
+          "scan_interval": "À quelle fréquence l’état du système est récupéré depuis le cloud MobileKey, en secondes."
+        }
+      }
     }
   },
   "entity": {

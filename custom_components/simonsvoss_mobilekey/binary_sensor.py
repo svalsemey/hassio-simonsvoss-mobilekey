@@ -13,7 +13,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .coordinator import MobileKeyConfigEntry
+from .coordinator import LOCK_SLUG, SMART_BRIDGE_SLUG, MobileKeyConfigEntry
 from .entity import (
     MobileKeyLockEntity,
     MobileKeySmartBridgeEntity,
@@ -136,6 +136,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        SMART_BRIDGE_SLUG,
         lambda system: system.smart_bridges,
         lambda coordinator, bridge: (
             MobileKeySmartBridgeBinarySensor(coordinator, description, bridge)
@@ -145,6 +146,7 @@ async def async_setup_entry(
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
+        LOCK_SLUG,
         lambda system: system.locks,
         lambda coordinator, lock: (
             MobileKeyLockBinarySensor(coordinator, description, lock)

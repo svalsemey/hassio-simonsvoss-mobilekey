@@ -1,7 +1,6 @@
 """Asynchronous client for the SimonsVoss MobileKey cloud service."""
 
 import asyncio
-from datetime import UTC, datetime
 from http import HTTPStatus
 import logging
 import time
@@ -85,20 +84,6 @@ class MobileKeyAuthenticationError(MobileKeyError):
     """Raised when the MobileKey cloud rejects the credentials or session."""
 
 
-def _naive_local_timestamp() -> str:
-    """Return the current local time as a naive ISO 8601 timestamp.
-
-    Command payloads carry a ``version`` timestamp formatted like the ones
-    reported by the cloud: local time, second precision, no UTC offset.
-    """
-    return (
-        datetime.now(UTC)
-        .astimezone()
-        .replace(tzinfo=None)
-        .isoformat(timespec="seconds")
-    )
-
-
 class MobileKeyApiClient:
     """Client managing the authenticated session with the MobileKey cloud.
 
@@ -118,6 +103,10 @@ class MobileKeyApiClient:
         self._session = session
         self._auth_lock = asyncio.Lock()
         self._authenticated_at: float | None = None
+        # Raw version string of the last loaded locking system state.
+        # Command payloads echo it verbatim, as the mobile application
+        # does.
+        self._system_version: str | None = None
 
     def _unexpired_cookie_names(self) -> KeysView[str]:
         """Return the names of the unexpired cookies held for the API host.
@@ -207,19 +196,19 @@ class MobileKeyApiClient:
 
     async def async_get_locking_system(self) -> MobileKeyLockingSystem:
         """Fetch the full state of the locking system in a single call."""
-        # MobileKey client errors from the request helper propagate as-is;
-        # only payloads not matching the documented schema are translated,
-        # so callers treat them as retryable communication failures.
+        payload = await self._async_request_json(
+            hdrs.METH_GET, LOAD_LOCKING_SYSTEM_ENDPOINT
+        )
+        # Payloads not matching the documented schema are translated so
+        # callers treat them as retryable communication failures.
         try:
-            return MobileKeyLockingSystem.from_api(
-                await self._async_request_json(
-                    hdrs.METH_GET, LOAD_LOCKING_SYSTEM_ENDPOINT
-                )
-            )
+            system = MobileKeyLockingSystem.from_api(payload)
+            self._system_version = payload["version"]
         except (AttributeError, KeyError, TypeError, ValueError) as err:
             raise MobileKeyConnectionError(
                 f"Malformed locking system payload: {err!r}"
             ) from err
+        return system
 
     async def async_open_lock(self, lock_id: int) -> None:
         """Ask the cloud to remotely open the given lock."""
@@ -232,16 +221,22 @@ class MobileKeyApiClient:
     async def _async_perform_lock_request(self, dto_type: str, lock_id: int) -> None:
         """Submit a lock command to the perform-request endpoint.
 
-        Commands are queued by the cloud and relayed asynchronously to the
-        lock by its SmartBridge; a successful response only acknowledges
-        that the command was accepted.
+        The payload carries the version string of the last loaded locking
+        system state, echoed verbatim. Commands are queued by the cloud
+        and relayed asynchronously to the lock by its SmartBridge; a
+        successful response only acknowledges that the command was
+        accepted.
         """
+        if (version := self._system_version) is None:
+            raise MobileKeyError(
+                "The locking system state must be loaded before sending commands"
+            )
         response = await self.async_request(
             hdrs.METH_POST,
             PERFORM_REQUEST_ENDPOINT,
             json={
                 "$type": dto_type,
-                "version": _naive_local_timestamp(),
+                "version": version,
                 "lockID": lock_id,
             },
             timeout=_COMMAND_TIMEOUT,

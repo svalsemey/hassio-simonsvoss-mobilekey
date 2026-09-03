@@ -18,3 +18,10 @@ LOAD_LOCKING_SYSTEM_ENDPOINT: Final = f"{API_BASE_URL}/lock-system/loadLockingSy
 
 # Endpoint executing lock commands (remote opening, audit trail readout).
 PERFORM_REQUEST_ENDPOINT: Final = f"{API_BASE_URL}/lock-system/performRequest"
+
+# Default, minimum and maximum polling period of the cloud service, in
+# seconds. The default stays close to the request rate of the mobile
+# application; the minimum keeps the load on the cloud reasonable.
+DEFAULT_SCAN_INTERVAL: Final = 60
+MIN_SCAN_INTERVAL: Final = 30
+MAX_SCAN_INTERVAL: Final = 3600
