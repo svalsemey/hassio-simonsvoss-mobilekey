@@ -16,7 +16,7 @@ from .api import (
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
 )
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import SCANINTERVAL_DEFAULT, DOMAIN
 from .models import MobileKeyLockingSystem
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def device_removed_signal(entry: MobileKeyConfigEntry) -> str:
 def _configured_update_interval(entry: MobileKeyConfigEntry) -> timedelta:
     """Return the polling interval configured in the entry options."""
     return timedelta(
-        seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        seconds=entry.options.get(CONF_SCAN_INTERVAL, SCANINTERVAL_DEFAULT)
     )
 
 

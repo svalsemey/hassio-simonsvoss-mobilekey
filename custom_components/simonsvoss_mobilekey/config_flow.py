@@ -31,7 +31,7 @@ from .api import (
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
 )
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, MAX_SCAN_INTERVAL, MIN_SCAN_INTERVAL
+from .const import SCANINTERVAL_DEFAULT, DOMAIN, SCANINTERVAL_MAX, SCANINTERVAL_MIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ _LOGGER = logging.getLogger(__name__)
 _SCAN_INTERVAL_SELECTOR = vol.All(
     NumberSelector(
         NumberSelectorConfig(
-            min=MIN_SCAN_INTERVAL,
-            max=MAX_SCAN_INTERVAL,
+            min=SCANINTERVAL_MIN,
+            max=SCANINTERVAL_MAX,
             step=1,
             mode=NumberSelectorMode.BOX,
             unit_of_measurement=UnitOfTime.SECONDS,
@@ -54,7 +54,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Required(
-            CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+            CONF_SCAN_INTERVAL, default=SCANINTERVAL_DEFAULT
         ): _SCAN_INTERVAL_SELECTOR,
     }
 )
@@ -64,7 +64,7 @@ STEP_REAUTH_DATA_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 OPTIONS_SCHEMA = vol.Schema(
     {
         vol.Required(
-            CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+            CONF_SCAN_INTERVAL, default=SCANINTERVAL_DEFAULT
         ): _SCAN_INTERVAL_SELECTOR,
     }
 )

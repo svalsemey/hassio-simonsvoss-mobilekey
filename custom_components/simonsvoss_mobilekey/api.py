@@ -17,13 +17,14 @@ from aiohttp import (
 from yarl import URL
 
 from .const import (
-    API_BASE_URL,
-    AUTH_COOKIE,
-    AUTH_ENDPOINT,
+    API_URL_BASE,
     AUTH_METHOD,
-    CF_BM_COOKIE,
-    LOAD_LOCKING_SYSTEM_ENDPOINT,
-    PERFORM_REQUEST_ENDPOINT,
+    COOKIE_AUTH,
+    COOKIE_CLOUDFLARE_BOTMANAGEMENT,
+    COOKIE_CLOUDFLARE_USER_VID,
+    ENDPOINT_AUTH,
+    ENDPOINT_PERFORMREQUEST,
+    ENDPOINT_SYSTEM_LOADLOCKING,
     USER_AGENT,
 )
 from .models import MobileKeyLockingSystem
@@ -33,14 +34,14 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-_BASE_URL: Final = URL(API_BASE_URL)
+_URL_BASE: Final = URL(API_URL_BASE)
 
 # Overall timeout applied to every request, including reading the body.
-_REQUEST_TIMEOUT: Final = ClientTimeout(total=30)
+_TIMEOUT_REQUEST: Final = ClientTimeout(total=30)
 
 # Longer timeout for lock commands: the cloud only answers once the
 # SmartBridge has relayed the command to the lock over the radio.
-_COMMAND_TIMEOUT: Final = ClientTimeout(total=60)
+_TIMEOUT_COMMAND: Final = ClientTimeout(total=60)
 
 # Period during which a freshly obtained session is trusted, so concurrent
 # callers hitting an expired session do not trigger redundant logins.
@@ -52,7 +53,9 @@ _AUTH_FAILED_STATUS: Final = frozenset({HTTPStatus.UNAUTHORIZED, HTTPStatus.FORB
 # Cookies that must all be unexpired for requests to be accepted by the
 # cloud: the session cookie and the Cloudflare bot-management cookie,
 # which is issued with a lifetime of roughly thirty minutes.
-_REQUIRED_COOKIES: Final = frozenset({AUTH_COOKIE, CF_BM_COOKIE})
+_REQUIRED_COOKIES: Final = frozenset(
+    {COOKIE_AUTH, COOKIE_CLOUDFLARE_BOTMANAGEMENT, COOKIE_CLOUDFLARE_USER_VID}
+)
 
 # Headers sent with every request to the cloud, mirroring those of the
 # MobileKey mobile application. Callers may override any of them.
@@ -66,8 +69,8 @@ _DEFAULT_HEADERS: Final[dict[str, str]] = {
 
 # Assembly-qualified DTO type names accepted by the perform-request endpoint.
 _DTO_ASSEMBLY: Final = "SimonsVoss.Soho.Services.UserGate"
-_DTO_OPEN_LOCK_REQUEST: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASSEMBLY}"
-_DTO_READ_AUDIT_TRAIL_REQUEST: Final = (
+_DTO_REQUEST_LOCK_OPEN: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASSEMBLY}"
+_DTO_REQUEST_AUDITTRAIL_READ: Final = (
     f"{_DTO_ASSEMBLY}.DTO.ReadAuditTrailRequest, {_DTO_ASSEMBLY}"
 )
 
@@ -114,12 +117,12 @@ class MobileKeyApiClient:
         Filtering the jar purges expired cookies, so a cookie past its
         expiration time is absent from the returned view.
         """
-        return self._session.cookie_jar.filter_cookies(_BASE_URL).keys()
+        return self._session.cookie_jar.filter_cookies(_URL_BASE).keys()
 
     @property
     def authenticated(self) -> bool:
         """Return whether an unexpired session cookie is held for the API host."""
-        return AUTH_COOKIE in self._unexpired_cookie_names()
+        return COOKIE_AUTH in self._unexpired_cookie_names()
 
     @property
     def _session_fresh(self) -> bool:
@@ -145,7 +148,7 @@ class MobileKeyApiClient:
                 return
 
             response = await self._async_raw_request(
-                AUTH_METHOD, AUTH_ENDPOINT, auth=self._basic_auth
+                AUTH_METHOD, ENDPOINT_AUTH, auth=self._basic_auth
             )
             response.release()
 
@@ -197,7 +200,7 @@ class MobileKeyApiClient:
     async def async_get_locking_system(self) -> MobileKeyLockingSystem:
         """Fetch the full state of the locking system in a single call."""
         payload = await self._async_request_json(
-            hdrs.METH_GET, LOAD_LOCKING_SYSTEM_ENDPOINT
+            hdrs.METH_GET, ENDPOINT_SYSTEM_LOADLOCKING
         )
         # Payloads not matching the documented schema are translated so
         # callers treat them as retryable communication failures.
@@ -212,11 +215,11 @@ class MobileKeyApiClient:
 
     async def async_open_lock(self, lock_id: int) -> None:
         """Ask the cloud to remotely open the given lock."""
-        await self._async_perform_lock_request(_DTO_OPEN_LOCK_REQUEST, lock_id)
+        await self._async_perform_lock_request(_DTO_REQUEST_LOCK_OPEN, lock_id)
 
     async def async_read_audit_trail(self, lock_id: int) -> None:
         """Ask the cloud to read out the audit trail of the given lock."""
-        await self._async_perform_lock_request(_DTO_READ_AUDIT_TRAIL_REQUEST, lock_id)
+        await self._async_perform_lock_request(_DTO_REQUEST_AUDITTRAIL_READ, lock_id)
 
     async def _async_perform_lock_request(self, dto_type: str, lock_id: int) -> None:
         """Submit a lock command to the perform-request endpoint.
@@ -233,13 +236,13 @@ class MobileKeyApiClient:
             )
         response = await self.async_request(
             hdrs.METH_POST,
-            PERFORM_REQUEST_ENDPOINT,
+            ENDPOINT_PERFORMREQUEST,
             json={
                 "$type": dto_type,
                 "version": version,
                 "lockID": lock_id,
             },
-            timeout=_COMMAND_TIMEOUT,
+            timeout=_TIMEOUT_COMMAND,
         )
         response.release()
         if response.status != HTTPStatus.OK:
@@ -266,7 +269,7 @@ class MobileKeyApiClient:
         """Send a request, translating transport failures into client errors."""
         # Caller-supplied headers are merged over the defaults.
         kwargs["headers"] = {**_DEFAULT_HEADERS, **kwargs.get("headers", {})}
-        kwargs.setdefault("timeout", _REQUEST_TIMEOUT)
+        kwargs.setdefault("timeout", _TIMEOUT_REQUEST)
         try:
             return await self._session.request(method, url, **kwargs)
         except TimeoutError as err:
