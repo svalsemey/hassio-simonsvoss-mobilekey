@@ -59,7 +59,7 @@ _REQUIRED_COOKIES: Final = frozenset(
 
 # Headers sent with every request to the cloud, mirroring those of the
 # MobileKey mobile application. Callers may override any of them.
-_DEFAULT_HEADERS: Final[dict[str, str]] = {
+_HEADERS_DEFAULT: Final[dict[str, str]] = {
     hdrs.USER_AGENT: USER_AGENT,
     hdrs.ACCEPT: "application/json",
     hdrs.CONTENT_TYPE: "application/json",
@@ -268,7 +268,7 @@ class MobileKeyApiClient:
     ) -> ClientResponse:
         """Send a request, translating transport failures into client errors."""
         # Caller-supplied headers are merged over the defaults.
-        kwargs["headers"] = {**_DEFAULT_HEADERS, **kwargs.get("headers", {})}
+        kwargs["headers"] = {**_HEADERS_DEFAULT, **kwargs.get("headers", {})}
         kwargs.setdefault("timeout", _TIMEOUT_REQUEST)
         try:
             return await self._session.request(method, url, **kwargs)
