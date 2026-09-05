@@ -1,5 +1,3 @@
-*Thinking...*
-
 # SimonsVoss MobileKey for Home Assistant
 
 Integrate your **SimonsVoss MobileKey** locking system into Home Assistant to monitor devices and trigger lock-related actions from your dashboard and automations.
