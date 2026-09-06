@@ -94,12 +94,9 @@ jobs:
       - name: Build HACS release zip (flat root)
         shell: bash
         run: |
-          mkdir -p dist
-          # IMPORTANT:
-          # HACS extracts this zip directly into custom_components/lifedomus
-          # so the archive must contain integration files at root (not custom_components/lifedomus/*).
-          cd "${INTEGRATION_PATH}"
-          zip -r "../../../dist/${ZIP_NAME}" .
+            mkdir -p "${GITHUB_WORKSPACE}/dist"
+            cd "${INTEGRATION_PATH}"
+            zip -r "${GITHUB_WORKSPACE}/dist/${ZIP_NAME}" .
 
       - name: Validate zip structure for HACS
         shell: bash
