@@ -31,3 +31,7 @@ COOKIE_CLOUDFLARE_USER_VID: Final = "_cfuvid"
 SCANINTERVAL_DEFAULT: Final = 60
 SCANINTERVAL_MIN: Final = 30
 SCANINTERVAL_MAX: Final = 3600
+
+# Guest languages supported by Key4Friends invitations, as accepted by
+# the cloud service.
+KEY4FRIENDS_LANGUAGES: Final = ("en", "de", "fr", "it", "nl", "sv", "da")

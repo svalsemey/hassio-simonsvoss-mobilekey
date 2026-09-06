@@ -1,6 +1,12 @@
 {
   "entity": {
     "binary_sensor": {
+      "expired": {
+        "default": "mdi:calendar-check",
+        "state": {
+          "on": "mdi:calendar-remove"
+        }
+      },
       "pending_task": {
         "default": "mdi:progress-wrench"
       },
@@ -23,11 +29,35 @@
       "door_open_alert_delay": {
         "default": "mdi:door-open"
       },
+      "ident_medium_authorizations": {
+        "default": "mdi:lock-check"
+      },
       "ident_medium_id": {
         "default": "mdi:identifier"
       },
       "ident_medium_name": {
         "default": "mdi:tag-text"
+      },
+      "key4friends_authorizations": {
+        "default": "mdi:lock-check"
+      },
+      "key4friends_email": {
+        "default": "mdi:email-outline"
+      },
+      "key4friends_id": {
+        "default": "mdi:identifier"
+      },
+      "key4friends_language": {
+        "default": "mdi:translate"
+      },
+      "key4friends_name": {
+        "default": "mdi:tag-text"
+      },
+      "key4friends_valid_from": {
+        "default": "mdi:calendar-start"
+      },
+      "key4friends_valid_to": {
+        "default": "mdi:calendar-end"
       },
       "last_update": {
         "default": "mdi:update"

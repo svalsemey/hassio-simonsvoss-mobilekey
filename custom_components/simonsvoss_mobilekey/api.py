@@ -1,10 +1,13 @@
 """Asynchronous client for the SimonsVoss MobileKey cloud service."""
 
 import asyncio
+from collections.abc import KeysView, Mapping
+from dataclasses import replace
+from datetime import datetime
 from http import HTTPStatus
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Final
+from typing import Any, Final
 
 from aiohttp import (
     BasicAuth,
@@ -27,10 +30,7 @@ from .const import (
     ENDPOINT_SYSTEM_LOADLOCKING,
     USER_AGENT,
 )
-from .models import MobileKeyLockingSystem
-
-if TYPE_CHECKING:
-    from collections.abc import KeysView
+from .models import MobileKeyKey4Friends, MobileKeyLockingSystem, parse_datetime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ _URL_BASE: Final = URL(API_URL_BASE)
 # Overall timeout applied to every request, including reading the body.
 _TIMEOUT_REQUEST: Final = ClientTimeout(total=30)
 
-# Longer timeout for lock commands: the cloud only answers once the
-# SmartBridge has relayed the command to the lock over the radio.
+# Longer timeout for perform-request commands: lock commands are only
+# acknowledged once the SmartBridge has relayed them over the radio.
 _TIMEOUT_COMMAND: Final = ClientTimeout(total=60)
 
 # Period during which a freshly obtained session is trusted, so concurrent
@@ -69,6 +69,18 @@ _HEADERS_DEFAULT: Final[dict[str, str]] = {
 
 # Assembly-qualified DTO type names accepted by the perform-request endpoint.
 _DTO_ASSEMBLY: Final = "SimonsVoss.Soho.Services.UserGate"
+_DTO_REQUEST_KEY4FRIENDS_CREATE: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.CreateKey4FriendsRequest, {_DTO_ASSEMBLY}"
+)
+_DTO_REQUEST_KEY4FRIENDS_DELETE: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.DeleteKey4FriendsRequest, {_DTO_ASSEMBLY}"
+)
+_DTO_REQUEST_KEY4FRIENDS_LIST: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.ListKey4FriendsRequest, {_DTO_ASSEMBLY}"
+)
+_DTO_REQUEST_KEY4FRIENDS_UPDATE: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.UpdateKey4FriendsRequest, {_DTO_ASSEMBLY}"
+)
 _DTO_REQUEST_LOCK_OPEN: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASSEMBLY}"
 _DTO_REQUEST_AUDITTRAIL_READ: Final = (
     f"{_DTO_ASSEMBLY}.DTO.ReadAuditTrailRequest, {_DTO_ASSEMBLY}"
@@ -85,6 +97,38 @@ class MobileKeyConnectionError(MobileKeyError):
 
 class MobileKeyAuthenticationError(MobileKeyError):
     """Raised when the MobileKey cloud rejects the credentials or session."""
+
+
+def _key4friends_expiration(key: MobileKeyKey4Friends) -> dict[str, str]:
+    """Serialize the validity window of a key to its API representation.
+
+    The cloud expects naive local timestamps, as sent by the mobile
+    applications.
+    """
+    if key.valid_from is None or key.valid_to is None:
+        raise MobileKeyError("Key4Friends keys require a complete validity window")
+    return {
+        "validFrom": key.valid_from.isoformat(),
+        "validTo": key.valid_to.isoformat(),
+    }
+
+
+# Maximum length of a response body excerpt quoted in error messages.
+_ERROR_BODY_EXCERPT_LENGTH: Final = 256
+
+
+async def _error_body_excerpt(response: ClientResponse) -> str:
+    """Return a short excerpt of an error response body.
+
+    Cloud error responses carry the server-side failure reason; quoting
+    an excerpt in the raised error surfaces it in the logs without
+    dumping arbitrarily large bodies.
+    """
+    try:
+        body = (await response.text()).strip()
+    except (TimeoutError, ClientError, UnicodeDecodeError) as err:
+        return f"<unreadable body: {err!r}>"
+    return body[:_ERROR_BODY_EXCERPT_LENGTH] or "<empty body>"
 
 
 class MobileKeyApiClient:
@@ -106,10 +150,24 @@ class MobileKeyApiClient:
         self._session = session
         self._auth_lock = asyncio.Lock()
         self._authenticated_at: float | None = None
-        # Raw version string of the last loaded locking system state.
-        # Command payloads echo it verbatim, as the mobile application
-        # does.
-        self._system_version: str | None = None
+        # Most recent system data version reported by the cloud. The raw
+        # string is echoed verbatim in command payloads, as the mobile
+        # application does; the parsed form orders successive reports.
+        self._version_raw: str | None = None
+        self._version: datetime | None = None
+
+    @property
+    def version(self) -> datetime | None:
+        """Return the most recent system data version reported by the cloud."""
+        return self._version
+
+    def _track_version(self, version: str | None) -> None:
+        """Keep the most recent system data version reported by the cloud."""
+        if version is None or (parsed := parse_datetime(version)) is None:
+            return
+        if self._version is None or parsed > self._version:
+            self._version = parsed
+            self._version_raw = version
 
     def _unexpired_cookie_names(self) -> KeysView[str]:
         """Return the names of the unexpired cookies held for the API host.
@@ -150,16 +208,16 @@ class MobileKeyApiClient:
             response = await self._async_raw_request(
                 AUTH_METHOD, ENDPOINT_AUTH, auth=self._basic_auth
             )
-            response.release()
-
-            if response.status in _AUTH_FAILED_STATUS:
-                raise MobileKeyAuthenticationError(
-                    "Credentials rejected by the MobileKey cloud"
-                )
-            if response.status != HTTPStatus.OK:
-                raise MobileKeyConnectionError(
-                    f"Unexpected HTTP {response.status} from authentication endpoint"
-                )
+            async with response:
+                if response.status in _AUTH_FAILED_STATUS:
+                    raise MobileKeyAuthenticationError(
+                        "Credentials rejected by the MobileKey cloud"
+                    )
+                if response.status != HTTPStatus.OK:
+                    raise MobileKeyConnectionError(
+                        f"Unexpected HTTP {response.status} from authentication"
+                        f" endpoint: {await _error_body_excerpt(response)}"
+                    )
             if not self.authenticated:
                 raise MobileKeyAuthenticationError(
                     "No session cookie issued by the authentication endpoint"
@@ -206,49 +264,135 @@ class MobileKeyApiClient:
         # callers treat them as retryable communication failures.
         try:
             system = MobileKeyLockingSystem.from_api(payload)
-            self._system_version = payload["version"]
         except (AttributeError, KeyError, TypeError, ValueError) as err:
+            _LOGGER.debug("Malformed locking system payload: %s", payload)
             raise MobileKeyConnectionError(
                 f"Malformed locking system payload: {err!r}"
             ) from err
+        self._track_version(payload["version"])
         return system
 
     async def async_open_lock(self, lock_id: int) -> None:
         """Ask the cloud to remotely open the given lock."""
-        await self._async_perform_lock_request(_DTO_REQUEST_LOCK_OPEN, lock_id)
+        await self._async_perform_request(_DTO_REQUEST_LOCK_OPEN, {"lockID": lock_id})
 
     async def async_read_audit_trail(self, lock_id: int) -> None:
         """Ask the cloud to read out the audit trail of the given lock."""
-        await self._async_perform_lock_request(_DTO_REQUEST_AUDITTRAIL_READ, lock_id)
+        await self._async_perform_request(
+            _DTO_REQUEST_AUDITTRAIL_READ, {"lockID": lock_id}
+        )
 
-    async def _async_perform_lock_request(self, dto_type: str, lock_id: int) -> None:
-        """Submit a lock command to the perform-request endpoint.
+    async def async_list_key4friends(self) -> tuple[MobileKeyKey4Friends, ...]:
+        """Fetch the Key4Friends keys of the locking system.
 
-        The payload carries the version string of the last loaded locking
-        system state, echoed verbatim. Commands are queued by the cloud
-        and relayed asynchronously to the lock by its SmartBridge; a
-        successful response only acknowledges that the command was
-        accepted.
+        The locking system state must have been loaded first: the request
+        echoes its version and the returned authorizations reference its
+        locks.
         """
-        if (version := self._system_version) is None:
+        payload = await self._async_perform_request(_DTO_REQUEST_KEY4FRIENDS_LIST)
+        try:
+            return tuple(map(MobileKeyKey4Friends.from_api, payload["keys"]))
+        except (AttributeError, KeyError, TypeError, ValueError) as err:
+            _LOGGER.debug("Malformed Key4Friends list payload: %s", payload)
+            raise MobileKeyConnectionError(
+                f"Malformed Key4Friends list payload: {err!r}"
+            ) from err
+
+    async def async_create_key4friends(
+        self, key: MobileKeyKey4Friends
+    ) -> MobileKeyKey4Friends:
+        """Create a Key4Friends key and return it with its cloud-assigned ID."""
+        payload = await self._async_perform_request(
+            _DTO_REQUEST_KEY4FRIENDS_CREATE,
+            {
+                "name": key.name,
+                "email": key.email,
+                "language": key.language,
+                "expirationSettings": _key4friends_expiration(key),
+                "authorizations": [
+                    {"lockID": authorization.lock_id, "name": authorization.name}
+                    for authorization in key.authorizations
+                ],
+            },
+        )
+        try:
+            return replace(key, id=payload["key4FriendsID"])
+        except (KeyError, TypeError) as err:
+            _LOGGER.debug("Malformed Key4Friends creation payload: %s", payload)
+            raise MobileKeyConnectionError(
+                f"Malformed Key4Friends creation payload: {err!r}"
+            ) from err
+
+    async def async_update_key4friends(self, key: MobileKeyKey4Friends) -> None:
+        """Update the name, language, validity and authorizations of a key.
+
+        The e-mail address of an existing key cannot be changed. The
+        silent flag is always sent as false, as the mobile application
+        does, so the guest is notified of the change.
+        """
+        await self._async_perform_request(
+            _DTO_REQUEST_KEY4FRIENDS_UPDATE,
+            {
+                "key4FriendsID": key.id,
+                "name": key.name,
+                "language": key.language,
+                "expirationSettings": _key4friends_expiration(key),
+                "authorizations": [
+                    {
+                        "lockID": authorization.lock_id,
+                        "name": authorization.name,
+                        "notes": authorization.notes,
+                    }
+                    for authorization in key.authorizations
+                ],
+                "silent": False,
+            },
+        )
+
+    async def async_delete_key4friends(self, key4friends_id: int) -> None:
+        """Delete the given Key4Friends key.
+
+        The silent flag is always sent as false, as the mobile application
+        does, so the guest is notified of the deletion.
+        """
+        await self._async_perform_request(
+            _DTO_REQUEST_KEY4FRIENDS_DELETE,
+            {"key4FriendsID": key4friends_id, "silent": False},
+        )
+
+    async def _async_perform_request(
+        self, dto_type: str, payload: Mapping[str, Any] | None = None
+    ) -> Any:
+        """Submit a command to the perform-request endpoint.
+
+        The request body leads with the ``$type`` discriminator: the
+        cloud deserializer resolves the concrete request DTO from
+        metadata properties placed at the start of the JSON object only,
+        and rejects commands whose discriminator appears later.
+        Every command echoes the version string of the last known system
+        state, as the mobile application does, and therefore requires the
+        locking system to have been loaded at least once. The version
+        reported back by the cloud is tracked for subsequent commands.
+        Lock commands are queued by the cloud and only acknowledged once
+        the SmartBridge has relayed them over the radio, hence the
+        extended timeout.
+        """
+        if (version := self._version_raw) is None:
             raise MobileKeyError(
                 "The locking system state must be loaded before sending commands"
             )
-        response = await self.async_request(
+        _LOGGER.debug("Performing request %s", dto_type)
+        response_payload = await self._async_request_json(
             hdrs.METH_POST,
             ENDPOINT_PERFORMREQUEST,
-            json={
-                "$type": dto_type,
-                "version": version,
-                "lockID": lock_id,
-            },
+            json={"$type": dto_type, "version": version, **(payload or {})},
             timeout=_TIMEOUT_COMMAND,
         )
-        response.release()
-        if response.status != HTTPStatus.OK:
-            raise MobileKeyConnectionError(
-                f"Unexpected HTTP {response.status} from perform-request endpoint"
-            )
+        try:
+            self._track_version(response_payload["versionInfo"]["version"])
+        except (KeyError, TypeError):
+            _LOGGER.debug("Perform-request response carries no version info")
+        return response_payload
 
     async def _async_request_json(self, method: str, url: str, **kwargs: Any) -> Any:
         """Send an authenticated request and return the decoded JSON body."""
@@ -256,7 +400,8 @@ class MobileKeyApiClient:
         async with response:
             if response.status != HTTPStatus.OK:
                 raise MobileKeyConnectionError(
-                    f"Unexpected HTTP {response.status} from {url}"
+                    f"Unexpected HTTP {response.status} from {url}:"
+                    f" {await _error_body_excerpt(response)}"
                 )
             try:
                 return await response.json()
@@ -271,12 +416,14 @@ class MobileKeyApiClient:
         kwargs["headers"] = {**_HEADERS_DEFAULT, **kwargs.get("headers", {})}
         kwargs.setdefault("timeout", _TIMEOUT_REQUEST)
         try:
-            return await self._session.request(method, url, **kwargs)
+            response = await self._session.request(method, url, **kwargs)
         except TimeoutError as err:
             raise MobileKeyConnectionError(
-                "Timeout while contacting the MobileKey cloud"
+                f"Timeout while contacting the MobileKey cloud at {url}"
             ) from err
         except ClientError as err:
             raise MobileKeyConnectionError(
-                f"Communication error with the MobileKey cloud: {err}"
+                f"Communication error with the MobileKey cloud at {url}: {err}"
             ) from err
+        _LOGGER.debug("%s %s -> HTTP %s", method, url, response.status)
+        return response

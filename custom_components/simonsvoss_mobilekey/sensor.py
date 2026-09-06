@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final
+from typing import Any, Final
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -14,15 +14,19 @@ from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util import dt as dt_util
 
+from .const import KEY4FRIENDS_LANGUAGES
 from .coordinator import (
-    IDENT_MEDIUM_SLUG,
-    LOCK_SLUG,
-    SMART_BRIDGE_SLUG,
+    SLUG_IDENT_MEDIUM,
+    SLUG_KEY4FRIENDS,
+    SLUG_LOCK,
+    SLUG_SMARTBRIDGE,
     MobileKeyConfigEntry,
 )
 from .entity import (
     MobileKeyIdentMediumEntity,
+    MobileKeyKey4FriendsEntity,
     MobileKeyLockEntity,
     MobileKeySmartBridgeEntity,
     MobileKeySystemEntity,
@@ -30,6 +34,7 @@ from .entity import (
 )
 from .models import (
     MobileKeyIdentMedium,
+    MobileKeyKey4Friends,
     MobileKeyLock,
     MobileKeyLockingSystem,
     MobileKeySignalQuality,
@@ -73,6 +78,18 @@ def _last_update(system: MobileKeyLockingSystem) -> datetime | None:
     return system.version.replace(tzinfo=UTC)
 
 
+def _as_local_timestamp(value: datetime | None) -> datetime | None:
+    """Attach the Home Assistant time zone to a naive local timestamp.
+
+    Key4Friends validity bounds are naive timestamps expressed in local
+    time; attaching the configured time zone declares them without
+    shifting the value.
+    """
+    if value is None:
+        return None
+    return value.replace(tzinfo=dt_util.get_default_time_zone())
+
+
 @dataclass(frozen=True, kw_only=True)
 class MobileKeyLockSensorDescription(SensorEntityDescription):
     """Describes a sensor attached to a MobileKey lock."""
@@ -90,9 +107,24 @@ class MobileKeySmartBridgeSensorDescription(SensorEntityDescription):
 
 @dataclass(frozen=True, kw_only=True)
 class MobileKeyIdentMediumSensorDescription(SensorEntityDescription):
-    """Describes a sensor attached to a MobileKey ident medium."""
+    """Describes a sensor attached to a MobileKey ident medium.
 
-    value_fn: Callable[[MobileKeyIdentMedium], StateType]
+    Value and attribute functions also receive the full system state,
+    which carries the key/lock authorization matrix.
+    """
+
+    value_fn: Callable[[MobileKeyIdentMedium, MobileKeyLockingSystem], StateType]
+    attributes_fn: (
+        Callable[[MobileKeyIdentMedium, MobileKeyLockingSystem], dict[str, Any]] | None
+    ) = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class MobileKeyKey4FriendsSensorDescription(SensorEntityDescription):
+    """Describes a sensor attached to a MobileKey Key4Friends key."""
+
+    value_fn: Callable[[MobileKeyKey4Friends], StateType | datetime]
+    attributes_fn: Callable[[MobileKeyKey4Friends], dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -102,7 +134,7 @@ class MobileKeySystemSensorDescription(SensorEntityDescription):
     value_fn: Callable[[MobileKeyLockingSystem], datetime | None]
 
 
-LOCK_DESCRIPTIONS: tuple[MobileKeyLockSensorDescription, ...] = (
+DESCRIPTIONS_LOCK: tuple[MobileKeyLockSensorDescription, ...] = (
     MobileKeyLockSensorDescription(
         key="signal_quality",
         translation_key="signal_quality",
@@ -145,7 +177,7 @@ LOCK_DESCRIPTIONS: tuple[MobileKeyLockSensorDescription, ...] = (
     ),
 )
 
-SMART_BRIDGE_DESCRIPTIONS: tuple[MobileKeySmartBridgeSensorDescription, ...] = (
+DESCRIPTIONS_SMARTBRIDGE: tuple[MobileKeySmartBridgeSensorDescription, ...] = (
     MobileKeySmartBridgeSensorDescription(
         key="signal_quality",
         translation_key="signal_quality",
@@ -162,21 +194,83 @@ SMART_BRIDGE_DESCRIPTIONS: tuple[MobileKeySmartBridgeSensorDescription, ...] = (
     ),
 )
 
-IDENT_MEDIUM_DESCRIPTIONS: tuple[MobileKeyIdentMediumSensorDescription, ...] = (
+DESCRIPTIONS_IDENT_MEDIUM: tuple[MobileKeyIdentMediumSensorDescription, ...] = (
     MobileKeyIdentMediumSensorDescription(
         key="id",
         translation_key="ident_medium_id",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda medium: medium.id,
+        value_fn=lambda medium, _: medium.id,
     ),
     MobileKeyIdentMediumSensorDescription(
         key="name",
         translation_key="ident_medium_name",
-        value_fn=lambda medium: medium.name,
+        value_fn=lambda medium, _: medium.name,
+    ),
+    MobileKeyIdentMediumSensorDescription(
+        key="authorizations",
+        translation_key="ident_medium_authorizations",
+        value_fn=lambda medium, system: len(system.authorized_locks(medium.id)),
+        attributes_fn=lambda medium, system: {
+            "authorized_locks": sorted(
+                lock.name for lock in system.authorized_locks(medium.id)
+            )
+        },
     ),
 )
 
-SYSTEM_DESCRIPTIONS: tuple[MobileKeySystemSensorDescription, ...] = (
+
+DESCRIPTIONS_KEY4FRIENDS: tuple[MobileKeyKey4FriendsSensorDescription, ...] = (
+    MobileKeyKey4FriendsSensorDescription(
+        key="id",
+        translation_key="key4friends_id",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda key: key.id,
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="name",
+        translation_key="key4friends_name",
+        value_fn=lambda key: key.name,
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="email",
+        translation_key="key4friends_email",
+        value_fn=lambda key: key.email,
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="language",
+        translation_key="key4friends_language",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(KEY4FRIENDS_LANGUAGES),
+        value_fn=lambda key: (
+            key.language if key.language in KEY4FRIENDS_LANGUAGES else None
+        ),
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="valid_from",
+        translation_key="key4friends_valid_from",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda key: _as_local_timestamp(key.valid_from),
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="valid_to",
+        translation_key="key4friends_valid_to",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda key: _as_local_timestamp(key.valid_to),
+    ),
+    MobileKeyKey4FriendsSensorDescription(
+        key="authorizations",
+        translation_key="key4friends_authorizations",
+        value_fn=lambda key: len(key.authorizations),
+        attributes_fn=lambda key: {
+            "authorized_locks": sorted(
+                authorization.name for authorization in key.authorizations
+            )
+        },
+    ),
+)
+
+
+DESCRIPTIONS_SYSTEM: tuple[MobileKeySystemSensorDescription, ...] = (
     MobileKeySystemSensorDescription(
         key="last_update",
         translation_key="last_update",
@@ -195,37 +289,48 @@ async def async_setup_entry(
     # The system device is unique and permanent: no dynamic tracking.
     async_add_entities(
         MobileKeySystemSensor(entry.runtime_data, description)
-        for description in SYSTEM_DESCRIPTIONS
+        for description in DESCRIPTIONS_SYSTEM
     )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
-        SMART_BRIDGE_SLUG,
+        SLUG_SMARTBRIDGE,
         lambda system: system.smart_bridges,
         lambda coordinator, bridge: (
             MobileKeySmartBridgeSensor(coordinator, description, bridge)
-            for description in SMART_BRIDGE_DESCRIPTIONS
+            for description in DESCRIPTIONS_SMARTBRIDGE
         ),
     )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
-        LOCK_SLUG,
+        SLUG_LOCK,
         lambda system: system.locks,
         lambda coordinator, lock: (
             MobileKeyLockSensor(coordinator, description, lock)
-            for description in LOCK_DESCRIPTIONS
+            for description in DESCRIPTIONS_LOCK
             if description.exists_fn(lock)
         ),
     )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
-        IDENT_MEDIUM_SLUG,
+        SLUG_IDENT_MEDIUM,
         lambda system: system.ident_media,
         lambda coordinator, medium: (
             MobileKeyIdentMediumSensor(coordinator, description, medium)
-            for description in IDENT_MEDIUM_DESCRIPTIONS
+            for description in DESCRIPTIONS_IDENT_MEDIUM
+        ),
+    )
+
+    async_setup_dynamic_entities(
+        entry,
+        async_add_entities,
+        SLUG_KEY4FRIENDS,
+        lambda system: system.key4friends,
+        lambda coordinator, key: (
+            MobileKeyKey4FriendsSensor(coordinator, description, key)
+            for description in DESCRIPTIONS_KEY4FRIENDS
         ),
     )
 
@@ -260,7 +365,34 @@ class MobileKeyIdentMediumSensor(MobileKeyIdentMediumEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
-        return self.entity_description.value_fn(self.ident_medium)
+        return self.entity_description.value_fn(
+            self.ident_medium, self.coordinator.data
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional attributes describing the ident medium."""
+        if (attributes_fn := self.entity_description.attributes_fn) is None:
+            return None
+        return attributes_fn(self.ident_medium, self.coordinator.data)
+
+
+class MobileKeyKey4FriendsSensor(MobileKeyKey4FriendsEntity, SensorEntity):
+    """Sensor reporting a state of a MobileKey Key4Friends key."""
+
+    entity_description: MobileKeyKey4FriendsSensorDescription
+
+    @property
+    def native_value(self) -> StateType | datetime:
+        """Return the state of the sensor."""
+        return self.entity_description.value_fn(self.key4friends)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return additional attributes describing the key."""
+        if (attributes_fn := self.entity_description.attributes_fn) is None:
+            return None
+        return attributes_fn(self.key4friends)
 
 
 class MobileKeySystemSensor(MobileKeySystemEntity, SensorEntity):

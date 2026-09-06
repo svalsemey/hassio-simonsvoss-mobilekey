@@ -1,115 +1,104 @@
 # SimonsVoss MobileKey for Home Assistant
 
-Integrate your **SimonsVoss MobileKey** locking system into Home Assistant to monitor devices and trigger lock-related actions from your dashboard and automations.
+Bring your SimonsVoss MobileKey locking system into Home Assistant: keep an eye
+on your doors, open your locks remotely and manage guest keys, straight from
+your dashboards and automations.
 
-This integration connects to the MobileKey cloud and keeps your system state updated automatically.
+> Community project — not affiliated with or endorsed by SimonsVoss
+> Technologies GmbH.
 
----
+## What you can do
 
-## What this integration provides
+- **See your whole system at a glance** — your locks, SmartBridges, keys and
+  guest keys appear automatically in Home Assistant, with the names you gave
+  them in MobileKey.
+- **Watch your doors** — know whether a door is open or closed and whether it
+  is locked (with compatible locks).
+- **Open locks remotely** — from a dashboard button or an automation.
+- **Manage guest keys (Key4Friends)** — invite a guest by email, adjust their
+  access later, see when an invitation has expired and revoke it when it is no
+  longer needed.
+- **Stay ahead of problems** — battery warnings, connectivity and radio signal
+  quality for every device.
+- **Automate everything** — get notified when a door stays open, when a
+  battery runs low or when a guest key expires.
 
-Once configured, Home Assistant will automatically discover and create entities for:
+Several MobileKey accounts can be added side by side, each with its own
+credentials.
 
-- **Locks**
-- **SmartBridges**
-- **Identification media** (keys/transponders)
+## What you need
 
-### Main capabilities
-
-- Monitor lock and bridge **connectivity**
-- Check lock-related states such as:
-  - door status (if available from your hardware)
-  - lock state
-  - battery critical state
-- View diagnostics like **signal quality**
-- Trigger lock actions from Home Assistant:
-  - **Open**
-  - **Read access list** (audit trail request)
-
----
+- A SimonsVoss MobileKey account (email address and password)
+- At least one SmartBridge, online and linked to your locks
+- An internet connection for Home Assistant — MobileKey is a cloud service
 
 ## Installation
 
-Install as a custom integration (for example via HACS or manual copy into `custom_components`), then restart Home Assistant.
+### With HACS
 
-Repository/documentation:
-- <https://github.com/svalsemey/hassio-simonsvoss-mobilekey>
+1. Add this repository to HACS as a custom repository.
+2. Install **SimonsVoss MobileKey**.
+3. Restart Home Assistant.
 
----
+### Manual
 
-## Configuration
+1. Copy the `simonsvoss_mobilekey` folder into the `custom_components` folder
+   of your Home Assistant configuration.
+2. Restart Home Assistant.
 
-No YAML setup is required.
+## Getting started
 
-1. Go to **Settings → Devices & Services → Add Integration**
-2. Search for **SimonsVoss MobileKey**
-3. Enter your MobileKey account:
-   - **Username** (email)
-   - **Password**
+1. Go to **Settings → Devices & services**.
+2. Select **Add integration** and search for **SimonsVoss MobileKey**.
+3. Sign in with your MobileKey email address and password.
+4. Choose how often Home Assistant refreshes the data (once a minute by
+   default, adjustable later in the integration options).
 
-If credentials expire or change, Home Assistant will prompt for **re-authentication**.
+That's it. Your devices are created automatically, and anything you add,
+rename or remove in MobileKey later is reflected in Home Assistant on its own.
 
----
+## Everyday use
 
-## Entities created
+### Doors and locks
 
-## Binary sensors
+Depending on its capabilities, each lock offers door and lock states, an
+**Open** button for remote opening, a **Read access list** button to fetch its
+latest access history (viewable in the MobileKey app), plus battery,
+connectivity and signal quality indicators.
 
-For locks (depending on available components):
+### Guest keys (Key4Friends)
 
-- **Lock** (lock state as binary sensor)
-- **Door**
-- **Battery**
-- **Connectivity**
+Guest keys let someone open selected locks with the free SimonsVoss
+**Key4Friends** app on their phone.
 
-For SmartBridges:
+- **Create a key** — open the integration options (**Settings → Devices &
+  services → SimonsVoss MobileKey → Configure**) and choose **Create a
+  Key4Friends key**: pick a name, the guest's email address and language, the
+  validity period and the authorized locks. The guest receives the invitation
+  by email.
+- **Edit a key** — choose **Edit a Key4Friends key** in the same menu.
+  Everything can be changed except the email address.
+- **Revoke a key** — delete the key's device in Home Assistant. The key is
+  removed from your MobileKey system and the guest is notified.
+- **Expired** — each guest key exposes an *Expired* indicator. Expired keys
+  are kept until you delete them, so this is a handy trigger for a cleanup
+  reminder.
 
-- **Connectivity**
+### Refreshing
 
-## Sensors
-
-- **Signal quality** (`none`, `weak`, `good`, `excellent`)
-- **MobileKey ID** (SmartBridge)
-- **ID** (ident medium)
-- **Name** (ident medium)
-
-## Buttons
-
-- **Open**
-- **Read access list**
-
----
-
-## Usage notes
-
-- Updates are cloud-polled (roughly every minute).
-- Commands are sent to the cloud first, then relayed to the lock by the SmartBridge.
-- Some actions may take a short time to be reflected in entity states.
-- Entities are dynamically managed: devices removed from MobileKey are cleaned up automatically in Home Assistant.
-
----
+States refresh automatically at the interval you chose. The **Refresh** button
+on the system device forces an immediate update, for example right after
+changing something in the MobileKey app.
 
 ## Troubleshooting
 
-Common issues and meaning:
-
-- **Failed to connect**
-  Home Assistant cannot reach the MobileKey cloud service.
-- **Invalid authentication**
-  Username/password is incorrect or no longer valid.
-- **Unexpected error**
-  Temporary/unknown issue during setup.
-
-If needed:
-
-1. Verify cloud connectivity from your Home Assistant host
-2. Re-check account credentials
-3. Try re-authentication from the integration page
-4. Check Home Assistant logs for `simonsvoss_mobilekey`
-
----
-
-## Good to know
-
-- This is a **cloud polling** integration, so internet access is required.
-- Device state depends on what MobileKey reports for your installation and hardware capabilities.
+- **Invalid authentication** — the email address or password is wrong. If you
+  changed your password, Home Assistant will prompt you to re-authenticate.
+- **Failed to connect** — Home Assistant could not reach the MobileKey cloud.
+  Check your internet connection and try again.
+- **A command feels slow** — commands travel through the cloud and then by
+  radio to the lock; a few seconds of delay is normal.
+- **Reporting an issue** — open an issue on GitHub and attach the diagnostics
+  file (**Settings → Devices & services → SimonsVoss MobileKey → ⋮ → Download
+  diagnostics**). Passwords and email addresses are automatically removed from
+  this file.

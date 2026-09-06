@@ -1,7 +1,7 @@
 """Data models for the SimonsVoss MobileKey cloud API."""
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, Final, Self
@@ -30,11 +30,8 @@ def _dto_type(raw: Mapping[str, Any]) -> str:
     return str(raw.get("$type", "")).partition(",")[0].strip()
 
 
-def _parse_datetime(value: str | None) -> datetime | None:
-    """Parse an ISO 8601 timestamp, or None when absent or malformed.
-
-    The cloud reports naive timestamps expressed in UTC.
-    """
+def parse_datetime(value: str | None) -> datetime | None:
+    """Parse an ISO 8601 timestamp, or None when absent or malformed."""
     if value is None:
         return None
     try:
@@ -61,7 +58,7 @@ class MobileKeyDoorStatus(IntEnum):
     CLOSED_UNLOCKED = 3
 
     @classmethod
-    def _missing_(cls, value: object) -> MobileKeyDoorStatus:
+    def _missing_(cls, value: object) -> Self:
         """Map values not documented by the API to UNKNOWN."""
         return cls.UNKNOWN
 
@@ -76,7 +73,7 @@ class MobileKeySignalQuality(IntEnum):
     EXCELLENT = 3
 
     @classmethod
-    def _missing_(cls, value: object) -> MobileKeySignalQuality:
+    def _missing_(cls, value: object) -> Self:
         """Map values not documented by the API to UNKNOWN."""
         return cls.UNKNOWN
 
@@ -193,11 +190,11 @@ class MobileKeyIdentMedium:
             is_transponder=_dto_type(raw) == _DTO_TRANSPONDER,
             phi=info.get("phi"),
             firmware=info.get("firmware"),
-            production_date=_parse_datetime(info.get("productionDate")),
+            production_date=parse_datetime(info.get("productionDate")),
             order_code=info.get("orderCode"),
             long_opening=key_data["longOpening"],
-            valid_from=_parse_datetime(expiration.get("validFrom")),
-            valid_to=_parse_datetime(expiration.get("validTo")),
+            valid_from=parse_datetime(expiration.get("validFrom")),
+            valid_to=parse_datetime(expiration.get("validTo")),
             key_state=key_data["state"],
             state=raw["state"],
             has_pending_task=raw.get("pendingTask") is not None,
@@ -289,6 +286,60 @@ class MobileKeyAuthorization:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class MobileKeyKey4FriendsAuthorization:
+    """A lock authorization carried by a Key4Friends key."""
+
+    lock_id: int
+    name: str
+    notes: str = ""
+
+    @classmethod
+    def from_api(cls, raw: Mapping[str, Any]) -> Self:
+        """Build the authorization from its API representation."""
+        return cls(
+            lock_id=raw["lockID"],
+            name=raw["name"],
+            notes=raw.get("notes") or "",
+        )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MobileKeyKey4Friends:
+    """A Key4Friends virtual key shared with a guest by e-mail.
+
+    Validity bounds are naive timestamps expressed in local time,
+    mirroring what the mobile applications send. An expired key stays
+    listed by the cloud until its owner deletes it.
+    """
+
+    id: int
+    name: str
+    email: str | None
+    language: str
+    valid_from: datetime | None
+    valid_to: datetime | None
+    state: int
+    authorizations: tuple[MobileKeyKey4FriendsAuthorization, ...]
+
+    @classmethod
+    def from_api(cls, raw: Mapping[str, Any]) -> Self:
+        """Build the key from its API representation."""
+        expiration = raw.get("expirationSettings") or {}
+        return cls(
+            id=raw["id"],
+            name=raw["name"],
+            email=raw.get("email"),
+            language=raw["language"],
+            valid_from=parse_datetime(expiration.get("validFrom")),
+            valid_to=parse_datetime(expiration.get("validTo")),
+            state=raw["state"],
+            authorizations=tuple(
+                map(MobileKeyKey4FriendsAuthorization.from_api, raw["authorizations"])
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class MobileKeyLockingSystem:
     """Full state of a MobileKey locking system."""
 
@@ -299,6 +350,8 @@ class MobileKeyLockingSystem:
     ident_media: Mapping[int, MobileKeyIdentMedium]
     smart_bridges: Mapping[int, MobileKeySmartBridge]
     authorizations: tuple[MobileKeyAuthorization, ...]
+    # Key4Friends keys, fetched separately and merged in by the coordinator.
+    key4friends: Mapping[int, MobileKeyKey4Friends] = field(default_factory=dict)
 
     def smart_bridge_by_chip_id(
         self, chip_id: str | None
@@ -329,12 +382,22 @@ class MobileKeyLockingSystem:
             and (medium := self.ident_media.get(authorization.ekey_id)) is not None
         )
 
+    def authorized_locks(self, ekey_id: int) -> tuple[MobileKeyLock, ...]:
+        """Return the locks the given ident medium is granted access to."""
+        return tuple(
+            lock
+            for authorization in self.authorizations
+            if authorization.ekey_id == ekey_id
+            and authorization.granted
+            and (lock := self.locks.get(authorization.lock_id)) is not None
+        )
+
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
         """Build the locking system from its API representation."""
         return cls(
             name=raw["name"],
-            version=_parse_datetime(raw["version"]),
+            version=parse_datetime(raw["version"]),
             locks={lock.id: lock for lock in map(MobileKeyLock.from_api, raw["locks"])},
             ident_media={
                 medium.id: medium

@@ -10,16 +10,18 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import (
-    IDENT_MEDIUM_SLUG,
-    LOCK_SLUG,
-    SMART_BRIDGE_SLUG,
-    SYSTEM_SLUG,
+    SLUG_IDENT_MEDIUM,
+    SLUG_KEY4FRIENDS,
+    SLUG_LOCK,
+    SLUG_SMARTBRIDGE,
+    SLUG_SYSTEM,
     MobileKeyConfigEntry,
     MobileKeyCoordinator,
     device_removed_signal,
 )
 from .models import (
     MobileKeyIdentMedium,
+    MobileKeyKey4Friends,
     MobileKeyLock,
     MobileKeyLockingSystem,
     MobileKeySmartBridge,
@@ -117,7 +119,7 @@ class MobileKeyLockEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the lock device."""
         self._lock_id = lock.id
-        super().__init__(coordinator, description, LOCK_SLUG.format(lock.id))
+        super().__init__(coordinator, description, SLUG_LOCK.format(lock.id))
 
     @property
     def lock(self) -> MobileKeyLock:
@@ -141,7 +143,7 @@ class MobileKeySmartBridgeEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the SmartBridge device."""
         self._bridge_id = bridge.id
-        super().__init__(coordinator, description, SMART_BRIDGE_SLUG.format(bridge.id))
+        super().__init__(coordinator, description, SLUG_SMARTBRIDGE.format(bridge.id))
 
     @property
     def smart_bridge(self) -> MobileKeySmartBridge:
@@ -167,7 +169,7 @@ class MobileKeyIdentMediumEntity(MobileKeyEntity):
     ) -> None:
         """Initialize the entity and attach it to the ident medium device."""
         self._medium_id = medium.id
-        super().__init__(coordinator, description, IDENT_MEDIUM_SLUG.format(medium.id))
+        super().__init__(coordinator, description, SLUG_IDENT_MEDIUM.format(medium.id))
 
     @property
     def ident_medium(self) -> MobileKeyIdentMedium:
@@ -182,6 +184,30 @@ class MobileKeyIdentMediumEntity(MobileKeyEntity):
         )
 
 
+class MobileKeyKey4FriendsEntity(MobileKeyEntity):
+    """Base class for entities reporting the state of a Key4Friends key."""
+
+    def __init__(
+        self,
+        coordinator: MobileKeyCoordinator,
+        description: EntityDescription,
+        key: MobileKeyKey4Friends,
+    ) -> None:
+        """Initialize the entity and attach it to the key device."""
+        self._key_id = key.id
+        super().__init__(coordinator, description, SLUG_KEY4FRIENDS.format(key.id))
+
+    @property
+    def key4friends(self) -> MobileKeyKey4Friends:
+        """Return the current state of the key backing this entity."""
+        return self.coordinator.data.key4friends[self._key_id]
+
+    @property
+    def available(self) -> bool:
+        """Return whether the key is still reported by the cloud."""
+        return super().available and self._key_id in self.coordinator.data.key4friends
+
+
 class MobileKeySystemEntity(MobileKeyEntity):
     """Base class for entities reporting the state of the locking system."""
 
@@ -189,4 +215,4 @@ class MobileKeySystemEntity(MobileKeyEntity):
         self, coordinator: MobileKeyCoordinator, description: EntityDescription
     ) -> None:
         """Initialize the entity and attach it to the system device."""
-        super().__init__(coordinator, description, SYSTEM_SLUG)
+        super().__init__(coordinator, description, SLUG_SYSTEM)

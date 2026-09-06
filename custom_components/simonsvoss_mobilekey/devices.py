@@ -7,14 +7,20 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .coordinator import (
-    IDENT_MEDIUM_SLUG,
-    LOCK_SLUG,
-    SMART_BRIDGE_SLUG,
-    SYSTEM_SLUG,
+    SLUG_IDENT_MEDIUM,
+    SLUG_KEY4FRIENDS,
+    SLUG_LOCK,
+    SLUG_SMARTBRIDGE,
+    SLUG_SYSTEM,
     MobileKeyConfigEntry,
     MobileKeyCoordinator,
 )
-from .models import MobileKeyIdentMedium, MobileKeyLock, MobileKeySmartBridge
+from .models import (
+    MobileKeyIdentMedium,
+    MobileKeyKey4Friends,
+    MobileKeyLock,
+    MobileKeySmartBridge,
+)
 
 MANUFACTURER: Final = "SimonsVoss"
 
@@ -26,10 +32,10 @@ def system_device_info(coordinator: MobileKeyCoordinator) -> DeviceInfo:
     system-wide entities and anchoring the device hierarchy.
     """
     return DeviceInfo(
-        identifiers={coordinator.device_identifier(SYSTEM_SLUG)},
+        identifiers={coordinator.device_identifier(SLUG_SYSTEM)},
         entry_type=DeviceEntryType.SERVICE,
         manufacturer=MANUFACTURER,
-        model="MobileKey locking system",
+        model="MobileKey",
         name=coordinator.data.name,
     )
 
@@ -42,9 +48,7 @@ def smart_bridge_device_info(
     Parent links are managed separately, through registry device IDs.
     """
     return DeviceInfo(
-        identifiers={
-            coordinator.device_identifier(SMART_BRIDGE_SLUG.format(bridge.id))
-        },
+        identifiers={coordinator.device_identifier(SLUG_SMARTBRIDGE.format(bridge.id))},
         manufacturer=MANUFACTURER,
         model="SmartBridge",
         name=bridge.name,
@@ -63,7 +67,7 @@ def lock_device_info(
     registry device IDs.
     """
     info = DeviceInfo(
-        identifiers={coordinator.device_identifier(LOCK_SLUG.format(lock.id))},
+        identifiers={coordinator.device_identifier(SLUG_LOCK.format(lock.id))},
         manufacturer=MANUFACTURER,
         name=lock.name,
         model_id=None,
@@ -87,7 +91,7 @@ def ident_medium_device_info(
     """
     return DeviceInfo(
         identifiers={
-            coordinator.device_identifier(IDENT_MEDIUM_SLUG.format(medium.id))
+            coordinator.device_identifier(SLUG_IDENT_MEDIUM.format(medium.id))
         },
         manufacturer=MANUFACTURER,
         name=medium.name,
@@ -95,6 +99,21 @@ def ident_medium_device_info(
         model_id=None,
         sw_version=None,
         serial_number=medium.phi,
+    )
+
+
+def key4friends_device_info(
+    coordinator: MobileKeyCoordinator, key: MobileKeyKey4Friends
+) -> DeviceInfo:
+    """Build the device registry description of a Key4Friends key.
+
+    Parent links are managed separately, through registry device IDs.
+    """
+    return DeviceInfo(
+        identifiers={coordinator.device_identifier(SLUG_KEY4FRIENDS.format(key.id))},
+        manufacturer=MANUFACTURER,
+        model="Key4Friends",
+        name=key.name,
     )
 
 
@@ -143,4 +162,9 @@ def async_register_devices(entry: MobileKeyConfigEntry) -> None:
         registry.async_update_device(
             _register(lock_device_info(coordinator, lock)),
             via_device_id=None if parent is None else bridge_device_ids[parent.id],
+        )
+
+    for key in system.key4friends.values():
+        registry.async_update_device(
+            _register(key4friends_device_info(coordinator, key))
         )

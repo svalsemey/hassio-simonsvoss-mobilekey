@@ -40,17 +40,98 @@
     "step": {
       "init": {
         "title": "MobileKey options",
+        "menu_options": {
+          "settings": "Configure the integration",
+          "create_key": "Create a Key4Friends key",
+          "edit_key": "Edit a Key4Friends key"
+        }
+      },
+      "settings": {
+        "title": "MobileKey settings",
         "data": {
           "scan_interval": "Polling interval"
         },
         "data_description": {
           "scan_interval": "How often the locking system state is fetched from the MobileKey cloud, in seconds."
         }
+      },
+      "create_key": {
+        "title": "Create a Key4Friends key",
+        "description": "Invite a guest by email. The guest operates the authorized locks with the SimonsVoss Key4Friends application.",
+        "data": {
+          "name": "Name",
+          "email": "Email",
+          "language": "Guest language",
+          "valid_from": "Valid from",
+          "valid_to": "Valid until",
+          "authorized_locks": "Authorized locks"
+        },
+        "data_description": {
+          "name": "Friendly name of the virtual key.",
+          "email": "Email address the invitation is sent to. It cannot be changed later.",
+          "language": "Language of the invitation and of the Key4Friends application.",
+          "valid_from": "Start of the validity period, in the Home Assistant time zone.",
+          "valid_to": "End of the validity period, in the Home Assistant time zone.",
+          "authorized_locks": "Locks the guest is allowed to operate."
+        }
+      },
+      "edit_key": {
+        "title": "Edit a Key4Friends key",
+        "data": {
+          "key": "Key"
+        },
+        "data_description": {
+          "key": "The virtual key to edit."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Edit a Key4Friends key",
+        "description": "Update the virtual key {name} ({email}). The email address cannot be changed.",
+        "data": {
+          "name": "Name",
+          "language": "Guest language",
+          "valid_from": "Valid from",
+          "valid_to": "Valid until",
+          "authorized_locks": "Authorized locks"
+        },
+        "data_description": {
+          "name": "Friendly name of the virtual key.",
+          "language": "Language of the invitation and of the Key4Friends application.",
+          "valid_from": "Start of the validity period, in the Home Assistant time zone.",
+          "valid_to": "End of the validity period, in the Home Assistant time zone.",
+          "authorized_locks": "Locks the guest is allowed to operate."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "invalid_datetime": "Enter a valid date and time",
+      "invalid_validity_window": "The end of the validity period must be after its start"
+    },
+    "abort": {
+      "not_loaded": "The integration must be loaded to manage Key4Friends keys",
+      "key_not_found": "The selected Key4Friends key no longer exists"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "English",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "nl": "Dutch",
+        "sv": "Swedish",
+        "da": "Danish"
       }
     }
   },
   "entity": {
     "binary_sensor": {
+      "expired": {
+        "name": "Expired"
+      },
       "pending_task": {
         "name": "Pending programming task"
       },
@@ -73,11 +154,44 @@
       "door_open_alert_delay": {
         "name": "Door open alert delay"
       },
+      "ident_medium_authorizations": {
+        "name": "Authorized locks"
+      },
       "ident_medium_id": {
         "name": "ID"
       },
       "ident_medium_name": {
         "name": "Name"
+      },
+      "key4friends_authorizations": {
+        "name": "Authorized locks"
+      },
+      "key4friends_email": {
+        "name": "Email"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Guest language",
+        "state": {
+          "en": "English",
+          "de": "German",
+          "fr": "French",
+          "it": "Italian",
+          "nl": "Dutch",
+          "sv": "Swedish",
+          "da": "Danish"
+        }
+      },
+      "key4friends_name": {
+        "name": "Name"
+      },
+      "key4friends_valid_from": {
+        "name": "Valid from"
+      },
+      "key4friends_valid_to": {
+        "name": "Valid until"
       },
       "last_update": {
         "name": "Last update"
@@ -107,7 +221,10 @@
       "message": "Authentication failed for MobileKey account {username}."
     },
     "cannot_connect": {
-      "message": "Could not reach the MobileKey cloud service."
+      "message": "Could not reach the MobileKey cloud service: {error}"
+    },
+    "key4friends_delete_failed": {
+      "message": "Could not delete the Key4Friends key {name} from the MobileKey cloud."
     },
     "lock_command_failed": {
       "message": "Could not send the command to the lock {name}."

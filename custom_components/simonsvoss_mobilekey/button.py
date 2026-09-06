@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api import MobileKeyApiClient, MobileKeyError
 from .const import DOMAIN
-from .coordinator import LOCK_SLUG, MobileKeyConfigEntry, MobileKeyCoordinator
+from .coordinator import SLUG_LOCK, MobileKeyConfigEntry, MobileKeyCoordinator
 from .entity import (
     MobileKeyLockEntity,
     MobileKeySystemEntity,
@@ -37,7 +37,7 @@ class MobileKeySystemButtonDescription(ButtonEntityDescription):
     press_fn: Callable[[MobileKeyCoordinator], Awaitable[None]]
 
 
-LOCK_DESCRIPTIONS: tuple[MobileKeyLockButtonDescription, ...] = (
+DESCRIPTIONS_LOCK: tuple[MobileKeyLockButtonDescription, ...] = (
     MobileKeyLockButtonDescription(
         key="open",
         translation_key="open",
@@ -51,7 +51,7 @@ LOCK_DESCRIPTIONS: tuple[MobileKeyLockButtonDescription, ...] = (
     ),
 )
 
-SYSTEM_DESCRIPTIONS: tuple[MobileKeySystemButtonDescription, ...] = (
+DESCRIPTIONS_SYSTEM: tuple[MobileKeySystemButtonDescription, ...] = (
     # Manual refreshes go through the coordinator debouncer, which absorbs
     # repeated presses.
     MobileKeySystemButtonDescription(
@@ -71,16 +71,16 @@ async def async_setup_entry(
     # The system device is unique and permanent: no dynamic tracking.
     async_add_entities(
         MobileKeySystemButton(entry.runtime_data, description)
-        for description in SYSTEM_DESCRIPTIONS
+        for description in DESCRIPTIONS_SYSTEM
     )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
-        LOCK_SLUG,
+        SLUG_LOCK,
         lambda system: system.locks,
         lambda coordinator, lock: (
             MobileKeyLockButton(coordinator, description, lock)
-            for description in LOCK_DESCRIPTIONS
+            for description in DESCRIPTIONS_LOCK
         ),
     )
 

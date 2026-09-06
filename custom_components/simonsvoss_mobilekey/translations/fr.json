@@ -7,7 +7,7 @@
         "data": {
           "username": "Nom d’utilisateur",
           "password": "Mot de passe",
-          "scan_interval": "Intervalle de sondage"
+          "scan_interval": "Intervalle d’interrogation"
         },
         "data_description": {
           "username": "L’adresse e-mail de votre compte MobileKey.",
@@ -40,17 +40,98 @@
     "step": {
       "init": {
         "title": "Options MobileKey",
+        "menu_options": {
+          "settings": "Configurer l’intégration",
+          "create_key": "Créer une clé Key4Friends",
+          "edit_key": "Modifier une clé Key4Friends"
+        }
+      },
+      "settings": {
+        "title": "Paramètres MobileKey",
         "data": {
-          "scan_interval": "Intervalle de sondage"
+          "scan_interval": "Intervalle d’interrogation"
         },
         "data_description": {
           "scan_interval": "À quelle fréquence l’état du système est récupéré depuis le cloud MobileKey, en secondes."
         }
+      },
+      "create_key": {
+        "title": "Créer une clé Key4Friends",
+        "description": "Invitez un invité par e-mail. L’invité utilise les serrures autorisées avec l’application SimonsVoss Key4Friends.",
+        "data": {
+          "name": "Nom",
+          "email": "E-mail",
+          "language": "Langue de l’invité",
+          "valid_from": "Valide à partir de",
+          "valid_to": "Valide jusqu’à",
+          "authorized_locks": "Serrures autorisées"
+        },
+        "data_description": {
+          "name": "Nom convivial de la clé virtuelle.",
+          "email": "Adresse e-mail à laquelle l’invitation est envoyée. Elle ne peut pas être modifiée ultérieurement.",
+          "language": "Langue de l’invitation et de l’application Key4Friends.",
+          "valid_from": "Début de la période de validité, dans le fuseau horaire de Home Assistant.",
+          "valid_to": "Fin de la période de validité, dans le fuseau horaire de Home Assistant.",
+          "authorized_locks": "Serrures que l’invité est autorisé à utiliser."
+        }
+      },
+      "edit_key": {
+        "title": "Modifier une clé Key4Friends",
+        "data": {
+          "key": "Clé"
+        },
+        "data_description": {
+          "key": "La clé virtuelle à modifier."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Modifier une clé Key4Friends",
+        "description": "Mettre à jour la clé virtuelle {name} ({email}). L’adresse e-mail ne peut pas être modifiée.",
+        "data": {
+          "name": "Nom",
+          "language": "Langue de l’invité",
+          "valid_from": "Valide à partir de",
+          "valid_to": "Valide jusqu’à",
+          "authorized_locks": "Serrures autorisées"
+        },
+        "data_description": {
+          "name": "Nom convivial de la clé virtuelle.",
+          "language": "Langue de l’invitation et de l’application Key4Friends.",
+          "valid_from": "Début de la période de validité, dans le fuseau horaire de Home Assistant.",
+          "valid_to": "Fin de la période de validité, dans le fuseau horaire de Home Assistant.",
+          "authorized_locks": "Serrures que l’invité est autorisé à utiliser."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion",
+      "invalid_auth": "Authentification invalide",
+      "invalid_datetime": "Saisissez une date et une heure valides",
+      "invalid_validity_window": "La fin de la période de validité doit être postérieure à son début"
+    },
+    "abort": {
+      "not_loaded": "L’intégration doit être chargée pour gérer les clés Key4Friends",
+      "key_not_found": "La clé Key4Friends sélectionnée n’existe plus"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Anglais",
+        "de": "Allemand",
+        "fr": "Français",
+        "it": "Italien",
+        "nl": "Néerlandais",
+        "sv": "Suédois",
+        "da": "Danois"
       }
     }
   },
   "entity": {
     "binary_sensor": {
+      "expired": {
+        "name": "Expirée"
+      },
       "pending_task": {
         "name": "Tâche de programmation en attente"
       },
@@ -73,11 +154,44 @@
       "door_open_alert_delay": {
         "name": "Délai d’alerte porte ouverte"
       },
+      "ident_medium_authorizations": {
+        "name": "Serrures autorisées"
+      },
       "ident_medium_id": {
         "name": "ID"
       },
       "ident_medium_name": {
         "name": "Nom"
+      },
+      "key4friends_authorizations": {
+        "name": "Serrures autorisées"
+      },
+      "key4friends_email": {
+        "name": "Email"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Langue de l’invité",
+        "state": {
+          "en": "Anglais",
+          "de": "Allemand",
+          "fr": "Français",
+          "it": "Italien",
+          "nl": "Néerlandais",
+          "sv": "Suédois",
+          "da": "Danois"
+        }
+      },
+      "key4friends_name": {
+        "name": "Nom"
+      },
+      "key4friends_valid_from": {
+        "name": "Valide à partir de"
+      },
+      "key4friends_valid_to": {
+        "name": "Valide jusqu’à"
       },
       "last_update": {
         "name": "Dernière mise à jour"
@@ -107,7 +221,10 @@
       "message": "Échec d’authentification pour le compte MobileKey {username}."
     },
     "cannot_connect": {
-      "message": "Impossible de joindre le service cloud MobileKey."
+      "message": "Impossible de joindre le service cloud MobileKey : {error}"
+    },
+    "key4friends_delete_failed": {
+      "message": "Impossible de supprimer la clé Key4Friends {name} du cloud MobileKey."
     },
     "lock_command_failed": {
       "message": "Impossible d’envoyer la commande à la serrure {name}."

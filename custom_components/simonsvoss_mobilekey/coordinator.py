@@ -1,5 +1,6 @@
 """Coordinator fetching the locking system state from the MobileKey cloud."""
 
+from dataclasses import replace
 from datetime import timedelta
 import logging
 from typing import Final
@@ -16,17 +17,18 @@ from .api import (
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
 )
-from .const import SCANINTERVAL_DEFAULT, DOMAIN
-from .models import MobileKeyLockingSystem
+from .const import DOMAIN, SCANINTERVAL_DEFAULT
+from .models import MobileKeyKey4Friends, MobileKeyLockingSystem
 
 _LOGGER = logging.getLogger(__name__)
 
 # Device slug templates, shared by device identifiers and entity unique IDs.
-LOCK_SLUG: Final = "lock_{}"
-SMART_BRIDGE_SLUG: Final = "smartbridge_{}"
-IDENT_MEDIUM_SLUG: Final = "identmedium_{}"
+SLUG_LOCK: Final = "lock_{}"
+SLUG_SMARTBRIDGE: Final = "smartbridge_{}"
+SLUG_IDENT_MEDIUM: Final = "identmedium_{}"
+SLUG_KEY4FRIENDS: Final = "key4friends_{}"
 # Device slug of the service device representing the whole installation.
-SYSTEM_SLUG: Final = "system"
+SLUG_SYSTEM: Final = "system"
 
 type MobileKeyConfigEntry = ConfigEntry[MobileKeyCoordinator]
 
@@ -43,6 +45,23 @@ def entry_unique_base(entry: MobileKeyConfigEntry) -> str:
 def entry_device_identifier(entry: MobileKeyConfigEntry, slug: str) -> tuple[str, str]:
     """Return the registry identifier of the device with the given slug."""
     return (DOMAIN, f"{entry_unique_base(entry)}_{slug}")
+
+
+def key4friends_id_from_identifiers(
+    entry: MobileKeyConfigEntry, identifiers: set[tuple[str, str]]
+) -> int | None:
+    """Return the Key4Friends key ID encoded in device identifiers, if any."""
+    prefix = f"{entry_unique_base(entry)}_{SLUG_KEY4FRIENDS.format('')}"
+    return next(
+        (
+            int(suffix)
+            for domain, identifier in identifiers
+            if domain == DOMAIN
+            and (suffix := identifier.removeprefix(prefix)) != identifier
+            and suffix.isdigit()
+        ),
+        None,
+    )
 
 
 def device_removed_signal(entry: MobileKeyConfigEntry) -> str:
@@ -96,10 +115,51 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
         """
         self.update_interval = _configured_update_interval(self.config_entry)
 
+    @callback
+    def async_upsert_key4friends(self, key: MobileKeyKey4Friends) -> None:
+        """Merge a freshly created or edited key into the coordinator data.
+
+        Updating the data immediately materializes the registry device
+        and entities of the key without waiting for the next poll.
+        """
+        self.async_set_updated_data(
+            replace(
+                self.data,
+                key4friends={**self.data.key4friends, key.id: key},
+                version=self.client.version or self.data.version,
+            )
+        )
+
+    @callback
+    def async_drop_key4friends(self, key_id: int) -> None:
+        """Drop a deleted key from the coordinator data.
+
+        Updating the data immediately releases the entities of the key,
+        so its registry device is not resurrected before the next poll.
+        """
+        self.async_set_updated_data(
+            replace(
+                self.data,
+                key4friends={
+                    item_id: item
+                    for item_id, item in self.data.key4friends.items()
+                    if item_id != key_id
+                },
+                version=self.client.version or self.data.version,
+            )
+        )
+
     async def _async_update_data(self) -> MobileKeyLockingSystem:
-        """Fetch the current locking system state from the cloud."""
+        """Fetch the current locking system state from the cloud.
+
+        Key4Friends keys are listed after the locking system state, whose
+        version the request echoes and whose locks the returned
+        authorizations reference. The reported data version is the most
+        recent one seen across both calls.
+        """
         try:
             system = await self.client.async_get_locking_system()
+            keys = await self.client.async_list_key4friends()
         except MobileKeyAuthenticationError as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
@@ -112,7 +172,13 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="cannot_connect",
+                translation_placeholders={"error": str(err)},
             ) from err
+        system = replace(
+            system,
+            key4friends={key.id: key for key in keys},
+            version=self.client.version or system.version,
+        )
         self._async_prune_stale_devices(system)
         return system
 
@@ -126,13 +192,14 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
         for the installation itself is always kept.
         """
         identifiers = {
-            self.device_identifier(SYSTEM_SLUG),
+            self.device_identifier(SLUG_SYSTEM),
             *(
                 self.device_identifier(slug.format(item_id))
                 for slug, item_ids in (
-                    (LOCK_SLUG, system.locks),
-                    (SMART_BRIDGE_SLUG, system.smart_bridges),
-                    (IDENT_MEDIUM_SLUG, system.ident_media),
+                    (SLUG_LOCK, system.locks),
+                    (SLUG_SMARTBRIDGE, system.smart_bridges),
+                    (SLUG_IDENT_MEDIUM, system.ident_media),
+                    (SLUG_KEY4FRIENDS, system.key4friends),
                 )
                 for item_id in item_ids
             ),
