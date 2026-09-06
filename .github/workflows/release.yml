@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 env:
-  INTEGRATION_DIR: custom_components/simonsvoss_mobilekey
+  INTEGRATION_PATH: custom_components/simonsvoss_mobilekey
   ZIP_NAME: simonsvoss_mobilekey.zip
 
 jobs:
