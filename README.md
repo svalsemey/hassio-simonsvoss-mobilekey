@@ -1,3 +1,8 @@
+![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
+[![HACS Passing](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml/badge.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml)
+[![Total Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases)
+[![Latest Release Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/latest/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases/latest)
+
 # SimonsVoss MobileKey for Home Assistant
 
 Bring your SimonsVoss MobileKey locking system into Home Assistant: keep an eye
@@ -37,6 +42,9 @@ credentials.
 ### With HACS
 
 1. Add this repository to HACS as a custom repository.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=svalsemey&repository=hassio-simonsvoss-mobilekey&category=plugin) 
+
 2. Install **SimonsVoss MobileKey**.
 3. Restart Home Assistant.
 
