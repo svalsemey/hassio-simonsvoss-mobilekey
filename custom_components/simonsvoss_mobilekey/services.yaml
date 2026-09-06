@@ -1,0 +1,128 @@
+key4friends_list:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: simonsvoss_mobilekey
+
+key4friends_get:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: simonsvoss_mobilekey
+              model: Key4Friends
+
+key4friends_create:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: simonsvoss_mobilekey
+    name:
+      required: true
+      example: "Weekend guest"
+      selector:
+        text:
+    email:
+      required: true
+      example: "guest@example.com"
+      selector:
+        text:
+          type: email
+    language:
+      required: true
+      selector:
+        select:
+          mode: dropdown
+          translation_key: key4friends_language
+          options:
+            - en
+            - de
+            - fr
+            - it
+            - nl
+            - sv
+            - da
+    valid_from:
+      required: true
+      selector:
+        datetime:
+    valid_to:
+      required: true
+      selector:
+        datetime:
+    locks:
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: simonsvoss_mobilekey
+          entity:
+            - domain: binary_sensor
+              device_class: lock
+    lock_names:
+      advanced: true
+      example: '{"1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d": "Front door"}'
+      selector:
+        object:
+
+key4friends_update:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: simonsvoss_mobilekey
+              model: Key4Friends
+    name:
+      selector:
+        text:
+    language:
+      selector:
+        select:
+          mode: dropdown
+          translation_key: key4friends_language
+          options:
+            - en
+            - de
+            - fr
+            - it
+            - nl
+            - sv
+            - da
+    valid_from:
+      selector:
+        datetime:
+    valid_to:
+      selector:
+        datetime:
+    locks:
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: simonsvoss_mobilekey
+          entity:
+            - domain: binary_sensor
+              device_class: lock
+    lock_names:
+      advanced: true
+      example: '{"1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d": "Front door"}'
+      selector:
+        object:
+
+key4friends_delete:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: simonsvoss_mobilekey
+              model: Key4Friends

@@ -87,7 +87,7 @@ Guest keys let someone open selected locks with the free SimonsVoss
 ### Actions
 
 Everything you can do with guest keys is also available as actions, for use
-in automations, scripts and dashboards (**Developer tools → Actions**):
+in automations, scripts and dashboards ([**Settings → Tools → Actions**](https://my.home-assistant.io/redirect/developer_services)):
 
 | Action | What it does |
 | --- | --- |

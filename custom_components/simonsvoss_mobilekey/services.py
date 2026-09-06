@@ -119,34 +119,31 @@ def _get_device(hass: HomeAssistant, device_id: str) -> dr.DeviceEntry:
     return device
 
 
-def _entry_for_device(
-    hass: HomeAssistant, device: dr.DeviceEntry
-) -> MobileKeyConfigEntry:
-    """Return the loaded MobileKey config entry owning the given device."""
-    for entry_id in device.config_entries:
-        entry = hass.config_entries.async_get_entry(entry_id)
-        if entry is None or entry.domain != DOMAIN:
-            continue
-        if entry.state is not ConfigEntryState.LOADED:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="entry_not_loaded",
-                translation_placeholders={"title": entry.title},
-            )
-        return entry
-    raise ServiceValidationError(
-        translation_domain=DOMAIN,
-        translation_key="device_not_found",
-        translation_placeholders={"device_id": device.id},
-    )
-
-
 def _key_context(
     call: ServiceCall,
 ) -> tuple[MobileKeyConfigEntry, dr.DeviceEntry, MobileKeyKey4Friends]:
-    """Resolve the entry, device and key targeted by a device-bound call."""
-    device = _get_device(call.hass, call.data[ATTR_DEVICE_ID])
-    entry = _entry_for_device(call.hass, device)
+    """Resolve the entry, device and key targeted by a device-bound call.
+
+    The registry lookup is scoped to this integration, so devices of
+    other integrations resolve as not found. The loaded state of the
+    entry is checked here, as only a loaded entry carries runtime data.
+    """
+    device_id: str = call.data[ATTR_DEVICE_ID]
+    device, entry = dr.async_get_device_and_config_entry_for_domain(
+        call.hass, device_id, domain=DOMAIN
+    )
+    if device is None or entry is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="device_not_found",
+            translation_placeholders={"device_id": device_id},
+        )
+    if entry.state is not ConfigEntryState.LOADED:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="entry_not_loaded",
+            translation_placeholders={"title": entry.title},
+        )
     key_id = device_item_id(entry, SLUG_KEY4FRIENDS, device.identifiers)
     if key_id is None or (
         key := entry.runtime_data.data.key4friends.get(key_id)
@@ -242,8 +239,8 @@ def _key_response(
     is None while the registry device does not exist yet.
     """
     coordinator = entry.runtime_data
-    device = dr.async_get(hass).async_get_device(
-        identifiers={coordinator.device_identifier(SLUG_KEY4FRIENDS.format(key.id))}
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        coordinator.device_identifier(SLUG_KEY4FRIENDS.format(key.id)), entry.entry_id
     )
     return {
         "id": key.id,
