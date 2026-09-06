@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anslut till MobileKey",
+        "description": "Logga in med ditt SimonsVoss MobileKey-konto.",
+        "data": {
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "scan_interval": "Pollingintervall"
+        },
+        "data_description": {
+          "username": "E-postadressen för ditt MobileKey-konto.",
+          "password": "Lösenordet för ditt MobileKey-konto.",
+          "scan_interval": "Hur ofta systemstatus hämtas från MobileKey-molnet, i sekunder."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autentisera MobileKey igen",
+        "description": "Lösenordet för {username} är inte längre giltigt. Ange det aktuella lösenordet.",
+        "data": {
+          "password": "Lösenord"
+        },
+        "data_description": {
+          "password": "Lösenordet för ditt MobileKey-konto."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Anslutningen misslyckades",
+      "invalid_auth": "Ogiltig autentisering",
+      "unknown": "Oväntat fel"
+    },
+    "abort": {
+      "already_configured": "Kontot är redan konfigurerat",
+      "reauth_successful": "Ny autentisering lyckades"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MobileKey-alternativ",
+        "menu_options": {
+          "settings": "Konfigurera integrationen",
+          "create_key": "Skapa en Key4Friends-nyckel",
+          "edit_key": "Redigera en Key4Friends-nyckel"
+        }
+      },
+      "settings": {
+        "title": "MobileKey-inställningar",
+        "data": {
+          "scan_interval": "Pollingintervall",
+          "user_agent": "User agent"
+        },
+        "data_description": {
+          "scan_interval": "Hur ofta låssystemets status hämtas från MobileKey-molnet, i sekunder.",
+          "user_agent": "HTTP User-Agent-huvud som skickas med varje begäran till MobileKey-molnet. Ändra det endast om molnet slutar acceptera standardvärdet."
+        }
+      },
+      "create_key": {
+        "title": "Skapa en Key4Friends-nyckel",
+        "description": "Bjud in en gäst via e-post. Gästen använder de auktoriserade låsen med appen SimonsVoss Key4Friends.",
+        "data": {
+          "name": "Namn",
+          "email": "E-post",
+          "language": "Gästens språk",
+          "valid_from": "Giltig från",
+          "valid_to": "Giltig till",
+          "authorized_locks": "Auktoriserade lås"
+        },
+        "data_description": {
+          "name": "Visningsnamn för den virtuella nyckeln.",
+          "email": "E-postadress som inbjudan skickas till. Den kan inte ändras senare.",
+          "language": "Språk för inbjudan och för Key4Friends-appen.",
+          "valid_from": "Start för giltighetsperioden, i Home Assistants tidszon.",
+          "valid_to": "Slut för giltighetsperioden, i Home Assistants tidszon.",
+          "authorized_locks": "Lås som gästen får använda. Namnen som visas för gästen granskas i nästa steg."
+        }
+      },
+      "edit_key": {
+        "title": "Redigera en Key4Friends-nyckel",
+        "data": {
+          "key": "Nyckel"
+        },
+        "data_description": {
+          "key": "Den virtuella nyckel som ska redigeras."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Redigera en Key4Friends-nyckel",
+        "description": "Uppdatera den virtuella nyckeln {name} ({email}). E-postadressen kan inte ändras.",
+        "data": {
+          "name": "Namn",
+          "language": "Gästens språk",
+          "valid_from": "Giltig från",
+          "valid_to": "Giltig till",
+          "authorized_locks": "Auktoriserade lås"
+        },
+        "data_description": {
+          "name": "Visningsnamn för den virtuella nyckeln.",
+          "language": "Språk för inbjudan och för Key4Friends-appen.",
+          "valid_from": "Start för giltighetsperioden, i Home Assistants tidszon.",
+          "valid_to": "Slut för giltighetsperioden, i Home Assistants tidszon.",
+          "authorized_locks": "Lås som gästen får använda."
+        }
+      },
+      "guest_lock_names": {
+        "title": "Låsnamn för gästen",
+        "description": "Gästen som använder {name} ser dessa namn i Key4Friends-appen. Varje fält är märkt med systemnamnet för motsvarande lås; lämna ett fält tomt för att visa systemnamnet."
+      }
+    },
+    "error": {
+      "cannot_connect": "Anslutningen misslyckades",
+      "invalid_auth": "Ogiltig autentisering",
+      "invalid_datetime": "Ange ett giltigt datum och en giltig tid",
+      "invalid_user_agent": "User agent får endast innehålla utskrivbara ASCII-tecken",
+      "invalid_validity_window": "Slutet av giltighetsperioden måste vara efter dess start"
+    },
+    "abort": {
+      "not_loaded": "Integrationen måste vara laddad för att hantera Key4Friends-nycklar",
+      "key_not_found": "Den valda Key4Friends-nyckeln finns inte längre"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Engelska",
+        "de": "Tyska",
+        "fr": "Franska",
+        "it": "Italienska",
+        "nl": "Nederländska",
+        "sv": "Svenska",
+        "da": "Danska"
+      }
+    }
+  },
+  "services": {
+    "key4friends_create": {
+      "name": "Skapa en Key4Friends-nyckel",
+      "description": "Skapar en Key4Friends-gästnyckel och skickar inbjudan via e-post till gästen.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-konto",
+          "description": "MobileKey-kontot där nyckeln skapas."
+        },
+        "name": {
+          "name": "Namn",
+          "description": "Visningsnamn för den virtuella nyckeln."
+        },
+        "email": {
+          "name": "E-post",
+          "description": "E-postadress som inbjudan skickas till. Den kan inte ändras senare."
+        },
+        "language": {
+          "name": "Gästens språk",
+          "description": "Språk för inbjudan och för Key4Friends-appen."
+        },
+        "valid_from": {
+          "name": "Giltig från",
+          "description": "Start för giltighetsperioden, i Home Assistants tidszon."
+        },
+        "valid_to": {
+          "name": "Giltig till",
+          "description": "Slut för giltighetsperioden, i Home Assistants tidszon."
+        },
+        "locks": {
+          "name": "Auktoriserade lås",
+          "description": "Lås som gästen får använda."
+        },
+        "lock_names": {
+          "name": "Låsnamn för gästen",
+          "description": "Namn som visas för gästen istället för låsens systemnamn. Ange en post per lås som ska döpas om, med enhets-ID för låset som nyckel och namnet som ska visas som värde. Omdöpta lås måste vara bland de auktoriserade låsen; lås utan post visar sitt systemnamn."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Ta bort en Key4Friends-nyckel",
+      "description": "Tar bort en Key4Friends-gästnyckel. Gästen meddelas och förlorar omedelbart åtkomsten.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nyckel",
+          "description": "Den Key4Friends-nyckel som ska tas bort."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Hämta en Key4Friends-nyckel",
+      "description": "Returnerar detaljerna för en Key4Friends-gästnyckel, inklusive dess låsauktoriseringar.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nyckel",
+          "description": "Den Key4Friends-nyckel som ska hämtas."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Lista Key4Friends-nycklar",
+      "description": "Returnerar alla Key4Friends-gästnycklar för ett MobileKey-konto.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-konto",
+          "description": "MobileKey-kontot vars nycklar listas."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Uppdatera en Key4Friends-nyckel",
+      "description": "Uppdaterar en Key4Friends-gästnyckel och meddelar gästen. Utelämnade fält lämnas oförändrade; e-postadressen kan inte ändras.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nyckel",
+          "description": "Den Key4Friends-nyckel som ska uppdateras."
+        },
+        "name": {
+          "name": "Namn",
+          "description": "Visningsnamn för den virtuella nyckeln."
+        },
+        "language": {
+          "name": "Gästens språk",
+          "description": "Språk för inbjudan och för Key4Friends-appen."
+        },
+        "valid_from": {
+          "name": "Giltig från",
+          "description": "Start för giltighetsperioden, i Home Assistants tidszon."
+        },
+        "valid_to": {
+          "name": "Giltig till",
+          "description": "Slut för giltighetsperioden, i Home Assistants tidszon."
+        },
+        "locks": {
+          "name": "Auktoriserade lås",
+          "description": "Lås som gästen får använda. Ersätter de aktuella auktoriseringarna."
+        },
+        "lock_names": {
+          "name": "Låsnamn för gästen",
+          "description": "Namn som visas för gästen istället för låsens systemnamn. Ange en post per lås som ska döpas om, med enhets-ID för låset som nyckel och namnet som ska visas som värde. Omdöpta lås måste vara bland de auktoriserade låsen; lås utan post behåller sitt nuvarande gästvisade namn, och nyligen auktoriserade lås använder sitt systemnamn som standard."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "expired": {
+        "name": "Utgången"
+      },
+      "last_api_call_successful": {
+        "name": "Senaste API-anropet lyckades"
+      },
+      "pending_task": {
+        "name": "Väntande programmeringsuppgift"
+      },
+      "permanent_opening": {
+        "name": "Permanent öppning"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Öppna"
+      },
+      "read_audit_trail": {
+        "name": "Läs åtkomstlista"
+      },
+      "refresh": {
+        "name": "Uppdatera"
+      }
+    },
+    "sensor": {
+      "door_open_alert_delay": {
+        "name": "Fördröjning för larm om öppen dörr"
+      },
+      "ident_medium_authorizations": {
+        "name": "Auktoriserade lås"
+      },
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Namn"
+      },
+      "key4friends_authorizations": {
+        "name": "Auktoriserade lås"
+      },
+      "key4friends_email": {
+        "name": "E-post"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Gästens språk",
+        "state": {
+          "en": "Engelska",
+          "de": "Tyska",
+          "fr": "Franska",
+          "it": "Italienska",
+          "nl": "Nederländska",
+          "sv": "Svenska",
+          "da": "Danska"
+        }
+      },
+      "key4friends_name": {
+        "name": "Namn"
+      },
+      "key4friends_valid_from": {
+        "name": "Giltig från"
+      },
+      "key4friends_valid_to": {
+        "name": "Giltig till"
+      },
+      "last_update": {
+        "name": "Senaste uppdatering"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey-ID"
+      },
+      "opening_timeout": {
+        "name": "Öppningstimeout"
+      },
+      "signal_quality": {
+        "name": "Signalkvalitet",
+        "state": {
+          "none": "Ingen signal",
+          "weak": "Svag",
+          "good": "Bra",
+          "excellent": "Utmärkt"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Autentiseringen misslyckades för MobileKey-kontot {username}."
+    },
+    "cannot_connect": {
+      "message": "Kunde inte nå MobileKey-molntjänsten: {error}"
+    },
+    "custom_name_not_authorized": {
+      "message": "Ett låsnamn för gästen pekar på {device}, som inte är bland nyckelns auktoriserade lås."
+    },
+    "device_not_found": {
+      "message": "Enheten {device_id} är inte en enhet för ett MobileKey-konto."
+    },
+    "entry_not_found": {
+      "message": "Det valda MobileKey-kontot är inte konfigurerat."
+    },
+    "entry_not_loaded": {
+      "message": "MobileKey-kontot {title} är för närvarande inte laddat."
+    },
+    "incomplete_validity_window": {
+      "message": "Både start och slut för giltighetsperioden krävs."
+    },
+    "invalid_validity_window": {
+      "message": "Slutet av giltighetsperioden måste vara efter dess start."
+    },
+    "key4friends_delete_failed": {
+      "message": "Kunde inte ta bort Key4Friends-nyckeln {name} från MobileKey-molnet."
+    },
+    "key4friends_not_found": {
+      "message": "Enheten {device} är inte en befintlig Key4Friends-nyckel."
+    },
+    "key4friends_save_failed": {
+      "message": "Kunde inte spara Key4Friends-nyckeln {name} i MobileKey-molnet."
+    },
+    "lock_command_failed": {
+      "message": "Kunde inte skicka kommandot till låset {name}."
+    },
+    "not_a_lock": {
+      "message": "Enheten {device} är inte ett lås för det riktade MobileKey-kontot."
+    }
+  }
+}
