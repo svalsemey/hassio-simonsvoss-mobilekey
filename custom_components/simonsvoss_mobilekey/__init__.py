@@ -18,6 +18,7 @@ from .coordinator import (
     MobileKeyCoordinator,
     device_removed_signal,
     entry_device_identifier,
+    entry_user_agent,
     key4friends_id_from_identifiers,
 )
 from .devices import async_register_devices
@@ -37,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) ->
             entry.data[CONF_USERNAME],
             entry.data[CONF_PASSWORD],
             async_create_clientsession(hass),
+            user_agent=entry_user_agent(entry),
         ),
     )
     # The first refresh authenticates against the cloud and loads the

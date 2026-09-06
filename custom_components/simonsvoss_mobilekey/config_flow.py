@@ -48,13 +48,15 @@ from .api import (
     MobileKeyError,
 )
 from .const import (
+    CONF_USER_AGENT,
     DOMAIN,
     KEY4FRIENDS_LANGUAGES,
     SCANINTERVAL_DEFAULT,
     SCANINTERVAL_MAX,
     SCANINTERVAL_MIN,
+    USER_AGENT_DEFAULT,
 )
-from .coordinator import MobileKeyCoordinator
+from .coordinator import MobileKeyCoordinator, entry_user_agent
 from .models import MobileKeyKey4Friends, MobileKeyKey4FriendsAuthorization
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,6 +112,7 @@ OPTIONS_SCHEMA = vol.Schema(
         vol.Required(
             CONF_SCAN_INTERVAL, default=SCANINTERVAL_DEFAULT
         ): _SCAN_INTERVAL_SELECTOR,
+        vol.Required(CONF_USER_AGENT, default=USER_AGENT_DEFAULT): TextSelector(),
     }
 )
 
@@ -316,13 +319,22 @@ class MobileKeyOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage the MobileKey integration settings."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            # Printable ASCII keeps the value a valid HTTP header and rules
+            # out header-injection attempts through control characters.
+            user_agent = user_input[CONF_USER_AGENT].strip()
+            if user_agent and user_agent.isascii() and user_agent.isprintable():
+                return self.async_create_entry(
+                    data={**user_input, CONF_USER_AGENT: user_agent}
+                )
+            errors[CONF_USER_AGENT] = "invalid_user_agent"
         return self.async_show_form(
             step_id="settings",
             data_schema=self.add_suggested_values_to_schema(
-                OPTIONS_SCHEMA, self.config_entry.options
+                OPTIONS_SCHEMA, user_input or self.config_entry.options
             ),
+            errors=errors,
         )
 
     async def async_step_create_key(
@@ -498,18 +510,20 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
         return MobileKeyOptionsFlow()
 
     async def _async_validate_credentials(
-        self, username: str, password: str
+        self, username: str, password: str, user_agent: str = USER_AGENT_DEFAULT
     ) -> tuple[dict[str, str], str]:
         """Check the credentials against the cloud.
 
-        Return the form errors and the locking system name, which doubles
-        as proof that the account data is reachable.
+        The validation client mirrors the runtime configuration, including
+        the configured user agent. Return the form errors and the locking
+        system name, which doubles as proof that the account data is
+        reachable.
         """
         # A throwaway session keeps validation cookies out of any shared jar.
         session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             system = await MobileKeyApiClient(
-                username, password, session
+                username, password, session, user_agent=user_agent
             ).async_get_locking_system()
         except MobileKeyAuthenticationError:
             return {"base": "invalid_auth"}, ""
@@ -564,7 +578,9 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
         reauth_entry = self._get_reauth_entry()
         if user_input is not None:
             errors, _ = await self._async_validate_credentials(
-                reauth_entry.data[CONF_USERNAME], user_input[CONF_PASSWORD]
+                reauth_entry.data[CONF_USERNAME],
+                user_input[CONF_PASSWORD],
+                user_agent=entry_user_agent(reauth_entry),
             )
             if not errors:
                 return self.async_update_reload_and_abort(

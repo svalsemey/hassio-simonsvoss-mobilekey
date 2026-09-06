@@ -107,6 +107,17 @@ class MobileKeyEntity(CoordinatorEntity[MobileKeyCoordinator]):
             identifiers={coordinator.device_identifier(device_slug)}
         )
 
+    @property
+    def available(self) -> bool:
+        """Return whether the entity is available.
+
+        The cloud service occasionally fails single requests, so polling
+        failures never make entities unavailable: they keep reporting the
+        last known state, and the API health binary sensor of the system
+        device reports the failure instead.
+        """
+        return True
+
 
 class MobileKeyLockEntity(MobileKeyEntity):
     """Base class for entities reporting the state of a lock."""

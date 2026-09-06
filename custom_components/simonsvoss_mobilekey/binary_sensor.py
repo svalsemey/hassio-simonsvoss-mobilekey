@@ -19,11 +19,13 @@ from .coordinator import (
     SLUG_LOCK,
     SLUG_SMARTBRIDGE,
     MobileKeyConfigEntry,
+    MobileKeyCoordinator,
 )
 from .entity import (
     MobileKeyKey4FriendsEntity,
     MobileKeyLockEntity,
     MobileKeySmartBridgeEntity,
+    MobileKeySystemEntity,
     async_setup_dynamic_entities,
 )
 from .models import (
@@ -63,6 +65,13 @@ class MobileKeyKey4FriendsBinarySensorDescription(BinarySensorEntityDescription)
     is_on_fn: Callable[[MobileKeyKey4Friends], bool | None]
 
 
+@dataclass(frozen=True, kw_only=True)
+class MobileKeySystemBinarySensorDescription(BinarySensorEntityDescription):
+    """Describes a binary sensor attached to the MobileKey locking system."""
+
+    is_on_fn: Callable[[MobileKeyCoordinator], bool | None]
+
+
 def _door_open(lock: MobileKeyLock) -> bool | None:
     """Return whether the door is open, or None when not reported."""
     if lock.door is None or lock.door.door_status is MobileKeyDoorStatus.UNKNOWN:
@@ -99,6 +108,19 @@ def _key4friends_expired(key: MobileKeyKey4Friends) -> bool | None:
         return None
     return dt_util.now().replace(tzinfo=None) > key.valid_to
 
+
+DESCRIPTIONS_SYSTEM: tuple[MobileKeySystemBinarySensorDescription, ...] = (
+    # Health of the cloud API, updated after every request. Entities
+    # deliberately stay available with their last known state while the
+    # cloud is unstable, so this sensor is the user-facing signal that
+    # the most recent API call failed.
+    MobileKeySystemBinarySensorDescription(
+        key="last_api_call_successful",
+        translation_key="last_api_call_successful",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=lambda coordinator: coordinator.client.last_call_successful,
+    ),
+)
 
 DESCRIPTIONS_LOCK: tuple[MobileKeyLockBinarySensorDescription, ...] = (
     # The lock entity exists on every lock device: it carries the
@@ -170,6 +192,11 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up MobileKey binary sensors from a config entry."""
+    # The system device is unique and permanent: no dynamic tracking.
+    async_add_entities(
+        MobileKeySystemBinarySensor(entry.runtime_data, description)
+        for description in DESCRIPTIONS_SYSTEM
+    )
     async_setup_dynamic_entities(
         entry,
         async_add_entities,
@@ -241,3 +268,14 @@ class MobileKeyKey4FriendsBinarySensor(MobileKeyKey4FriendsEntity, BinarySensorE
     def is_on(self) -> bool | None:
         """Return the state of the binary sensor."""
         return self.entity_description.is_on_fn(self.key4friends)
+
+
+class MobileKeySystemBinarySensor(MobileKeySystemEntity, BinarySensorEntity):
+    """Binary sensor reporting a state of the MobileKey locking system."""
+
+    entity_description: MobileKeySystemBinarySensorDescription
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state of the binary sensor."""
+        return self.entity_description.is_on_fn(self.coordinator)

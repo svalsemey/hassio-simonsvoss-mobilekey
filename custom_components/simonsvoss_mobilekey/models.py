@@ -25,14 +25,14 @@ _AUTHORIZATION_GRANTED: Final = 1
 _BATTERY_OK: Final = 0
 
 
-def _dto_type(raw: Mapping[str, Any]) -> str:
+def dto_type(raw: Mapping[str, Any]) -> str:
     """Return the bare DTO type name, without the assembly qualifier."""
     return str(raw.get("$type", "")).partition(",")[0].strip()
 
 
-def parse_datetime(value: str | None) -> datetime | None:
+def parse_datetime(value: Any) -> datetime | None:
     """Parse an ISO 8601 timestamp, or None when absent or malformed."""
-    if value is None:
+    if not isinstance(value, str):
         return None
     try:
         return datetime.fromisoformat(value)
@@ -182,12 +182,12 @@ class MobileKeyIdentMedium:
         key_data = raw["keyData"]
         # Validity dates are only meaningful for fixed-dates expiration.
         expiration = key_data.get("expirationSettings") or {}
-        if _dto_type(expiration) != _DTO_FIXED_DATES_EXPIRATION:
+        if dto_type(expiration) != _DTO_FIXED_DATES_EXPIRATION:
             expiration = {}
         return cls(
             id=raw["id"],
             name=key_data["name"],
-            is_transponder=_dto_type(raw) == _DTO_TRANSPONDER,
+            is_transponder=dto_type(raw) == _DTO_TRANSPONDER,
             phi=info.get("phi"),
             firmware=info.get("firmware"),
             production_date=parse_datetime(info.get("productionDate")),
@@ -219,7 +219,7 @@ class MobileKeyLock(_ConnectableModel):
         Components are matched on their DTO type, never on their position.
         """
         components = {
-            _dto_type(component): component for component in raw["components"]
+            dto_type(component): component for component in raw["components"]
         }
         return cls(
             id=raw["id"],

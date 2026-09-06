@@ -1,13 +1,14 @@
 """Asynchronous client for the SimonsVoss MobileKey cloud service."""
 
 import asyncio
-from collections.abc import KeysView, Mapping
+from collections.abc import Awaitable, Callable, KeysView, Mapping
 from dataclasses import replace
 from datetime import datetime
+from functools import wraps
 from http import HTTPStatus
 import logging
 import time
-from typing import Any, Final
+from typing import Any, Concatenate, Final
 
 from aiohttp import (
     BasicAuth,
@@ -28,9 +29,14 @@ from .const import (
     ENDPOINT_AUTH,
     ENDPOINT_PERFORMREQUEST,
     ENDPOINT_SYSTEM_LOADLOCKING,
-    USER_AGENT,
+    USER_AGENT_DEFAULT,
 )
-from .models import MobileKeyKey4Friends, MobileKeyLockingSystem, parse_datetime
+from .models import (
+    MobileKeyKey4Friends,
+    MobileKeyLockingSystem,
+    dto_type,
+    parse_datetime,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,9 +64,10 @@ _REQUIRED_COOKIES: Final = frozenset(
 )
 
 # Headers sent with every request to the cloud, mirroring those of the
-# MobileKey mobile application. Callers may override any of them.
-_HEADERS_DEFAULT: Final[dict[str, str]] = {
-    hdrs.USER_AGENT: USER_AGENT,
+# MobileKey mobile application. The User-Agent completing them is held
+# per client instance, as it is configurable. Callers may override any
+# header on a per-request basis.
+_HEADERS_COMMON: Final[dict[str, str]] = {
     hdrs.ACCEPT: "application/json",
     hdrs.CONTENT_TYPE: "application/json",
     hdrs.ACCEPT_ENCODING: "gzip, deflate, br",
@@ -85,6 +92,10 @@ _DTO_REQUEST_LOCK_OPEN: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASS
 _DTO_REQUEST_AUDITTRAIL_READ: Final = (
     f"{_DTO_ASSEMBLY}.DTO.ReadAuditTrailRequest, {_DTO_ASSEMBLY}"
 )
+# Bare DTO type prefix and suffix shared by every perform-request
+# response, e.g. OkResponse or ListKey4FriendsResponse.
+_DTO_RESPONSE_PREFIX: Final = f"{_DTO_ASSEMBLY}.DTO."
+_DTO_RESPONSE_SUFFIX: Final = "Response"
 
 
 class MobileKeyError(Exception):
@@ -97,6 +108,30 @@ class MobileKeyConnectionError(MobileKeyError):
 
 class MobileKeyAuthenticationError(MobileKeyError):
     """Raised when the MobileKey cloud rejects the credentials or session."""
+
+
+def _reports_api_health[**P, R](
+    method: Callable[Concatenate["MobileKeyApiClient", P], Awaitable[R]],
+) -> Callable[Concatenate["MobileKeyApiClient", P], Awaitable[R]]:
+    """Report the outcome of a cloud operation to the API health flag.
+
+    Both successes and cloud-side failures update the flag; usage errors
+    raised before any request is sent leave it untouched.
+    """
+
+    @wraps(method)
+    async def wrapper(
+        self: "MobileKeyApiClient", *args: P.args, **kwargs: P.kwargs
+    ) -> R:
+        try:
+            result = await method(self, *args, **kwargs)
+        except (MobileKeyAuthenticationError, MobileKeyConnectionError):
+            self._record_api_health(successful=False)
+            raise
+        self._record_api_health(successful=True)
+        return result
+
+    return wrapper
 
 
 def _key4friends_expiration(key: MobileKeyKey4Friends) -> dict[str, str]:
@@ -142,14 +177,29 @@ class MobileKeyApiClient:
     every refreshed ``__cf_bm`` issued by Cloudflare on regular responses,
     and a request attempted after a required cookie has expired triggers a
     re-authentication first, which reissues the full cookie set.
+    The outcome of the most recent cloud operation is exposed through
+    ``last_call_successful`` and reported to an optional listener, so
+    callers can surface the health of the cloud service.
     """
 
-    def __init__(self, username: str, password: str, session: ClientSession) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        session: ClientSession,
+        *,
+        user_agent: str = USER_AGENT_DEFAULT,
+    ) -> None:
         """Initialize the client with account credentials and an HTTP session."""
         self._basic_auth = BasicAuth(username, password)
         self._session = session
+        self._headers = {**_HEADERS_COMMON, hdrs.USER_AGENT: user_agent}
         self._auth_lock = asyncio.Lock()
         self._authenticated_at: float | None = None
+        # Outcome of the most recent cloud operation, None before the first
+        # one completes; the listener is invoked whenever the value changes.
+        self._last_call_successful: bool | None = None
+        self._health_listener: Callable[[], None] | None = None
         # Most recent system data version reported by the cloud. The raw
         # string is echoed verbatim in command payloads, as the mobile
         # application does; the parsed form orders successive reports.
@@ -161,9 +211,39 @@ class MobileKeyApiClient:
         """Return the most recent system data version reported by the cloud."""
         return self._version
 
-    def _track_version(self, version: str | None) -> None:
+    @property
+    def user_agent(self) -> str:
+        """Return the User-Agent header sent with every cloud request."""
+        return self._headers[hdrs.USER_AGENT]
+
+    @user_agent.setter
+    def user_agent(self, value: str) -> None:
+        """Change the User-Agent header sent with subsequent requests."""
+        self._headers[hdrs.USER_AGENT] = value
+
+    @property
+    def last_call_successful(self) -> bool | None:
+        """Return the outcome of the most recent cloud operation.
+
+        None means no operation has completed yet.
+        """
+        return self._last_call_successful
+
+    def set_health_listener(self, listener: Callable[[], None] | None) -> None:
+        """Set the callback invoked when the API health flag changes."""
+        self._health_listener = listener
+
+    def _record_api_health(self, *, successful: bool) -> None:
+        """Record the outcome of a cloud operation, notifying on changes."""
+        if successful == self._last_call_successful:
+            return
+        self._last_call_successful = successful
+        if self._health_listener is not None:
+            self._health_listener()
+
+    def _track_version(self, version: Any) -> None:
         """Keep the most recent system data version reported by the cloud."""
-        if version is None or (parsed := parse_datetime(version)) is None:
+        if (parsed := parse_datetime(version)) is None:
             return
         if self._version is None or parsed > self._version:
             self._version = parsed
@@ -255,6 +335,7 @@ class MobileKeyApiClient:
             )
         return response
 
+    @_reports_api_health
     async def async_get_locking_system(self) -> MobileKeyLockingSystem:
         """Fetch the full state of the locking system in a single call."""
         payload = await self._async_request_json(
@@ -272,16 +353,19 @@ class MobileKeyApiClient:
         self._track_version(payload["version"])
         return system
 
+    @_reports_api_health
     async def async_open_lock(self, lock_id: int) -> None:
         """Ask the cloud to remotely open the given lock."""
         await self._async_perform_request(_DTO_REQUEST_LOCK_OPEN, {"lockID": lock_id})
 
+    @_reports_api_health
     async def async_read_audit_trail(self, lock_id: int) -> None:
         """Ask the cloud to read out the audit trail of the given lock."""
         await self._async_perform_request(
             _DTO_REQUEST_AUDITTRAIL_READ, {"lockID": lock_id}
         )
 
+    @_reports_api_health
     async def async_list_key4friends(self) -> tuple[MobileKeyKey4Friends, ...]:
         """Fetch the Key4Friends keys of the locking system.
 
@@ -298,6 +382,7 @@ class MobileKeyApiClient:
                 f"Malformed Key4Friends list payload: {err!r}"
             ) from err
 
+    @_reports_api_health
     async def async_create_key4friends(
         self, key: MobileKeyKey4Friends
     ) -> MobileKeyKey4Friends:
@@ -323,6 +408,7 @@ class MobileKeyApiClient:
                 f"Malformed Key4Friends creation payload: {err!r}"
             ) from err
 
+    @_reports_api_health
     async def async_update_key4friends(self, key: MobileKeyKey4Friends) -> None:
         """Update the name, language, validity and authorizations of a key.
 
@@ -349,6 +435,7 @@ class MobileKeyApiClient:
             },
         )
 
+    @_reports_api_health
     async def async_delete_key4friends(self, key4friends_id: int) -> None:
         """Delete the given Key4Friends key.
 
@@ -361,7 +448,7 @@ class MobileKeyApiClient:
         )
 
     async def _async_perform_request(
-        self, dto_type: str, payload: Mapping[str, Any] | None = None
+        self, request_type: str, payload: Mapping[str, Any] | None = None
     ) -> Any:
         """Submit a command to the perform-request endpoint.
 
@@ -371,27 +458,38 @@ class MobileKeyApiClient:
         and rejects commands whose discriminator appears later.
         Every command echoes the version string of the last known system
         state, as the mobile application does, and therefore requires the
-        locking system to have been loaded at least once. The version
-        reported back by the cloud is tracked for subsequent commands.
-        Lock commands are queued by the cloud and only acknowledged once
-        the SmartBridge has relayed them over the radio, hence the
-        extended timeout.
+        locking system to have been loaded at least once.
+        A succeeding command always answers with a response DTO, e.g.
+        ``OkResponse`` or ``ListKey4FriendsResponse``, whose ``version``
+        field reports the resulting system data version; only the most
+        recent version is kept, so concurrent calls completing out of
+        order never regress it. Lock commands are queued by the cloud and
+        only acknowledged once the SmartBridge has relayed them over the
+        radio, hence the extended timeout.
         """
         if (version := self._version_raw) is None:
             raise MobileKeyError(
                 "The locking system state must be loaded before sending commands"
             )
-        _LOGGER.debug("Performing request %s", dto_type)
+        _LOGGER.debug("Performing request %s", request_type)
         response_payload = await self._async_request_json(
             hdrs.METH_POST,
             ENDPOINT_PERFORMREQUEST,
-            json={"$type": dto_type, "version": version, **(payload or {})},
+            json={"$type": request_type, "version": version, **(payload or {})},
             timeout=_TIMEOUT_COMMAND,
         )
-        try:
-            self._track_version(response_payload["versionInfo"]["version"])
-        except (KeyError, TypeError):
-            _LOGGER.debug("Perform-request response carries no version info")
+        if not isinstance(response_payload, Mapping) or not (
+            (response_type := dto_type(response_payload)).startswith(
+                _DTO_RESPONSE_PREFIX
+            )
+            and response_type.endswith(_DTO_RESPONSE_SUFFIX)
+        ):
+            _LOGGER.debug("Unexpected perform-request response: %s", response_payload)
+            raise MobileKeyConnectionError(
+                f"Unexpected response to {request_type} from the perform-request"
+                " endpoint"
+            )
+        self._track_version(response_payload.get("version"))
         return response_payload
 
     async def _async_request_json(self, method: str, url: str, **kwargs: Any) -> Any:
@@ -413,7 +511,7 @@ class MobileKeyApiClient:
     ) -> ClientResponse:
         """Send a request, translating transport failures into client errors."""
         # Caller-supplied headers are merged over the defaults.
-        kwargs["headers"] = {**_HEADERS_DEFAULT, **kwargs.get("headers", {})}
+        kwargs["headers"] = {**self._headers, **kwargs.get("headers", {})}
         kwargs.setdefault("timeout", _TIMEOUT_REQUEST)
         try:
             response = await self._session.request(method, url, **kwargs)

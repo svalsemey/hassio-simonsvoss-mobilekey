@@ -86,9 +86,11 @@ Guest keys let someone open selected locks with the free SimonsVoss
 
 ### Refreshing
 
-States refresh automatically at the interval you chose. The **Refresh** button
-on the system device forces an immediate update, for example right after
-changing something in the MobileKey app.
+States refresh automatically when you decide to. The **Refresh** button on the
+system device forces an immediate update, for example right afterchanging
+something in the MobileKey app or for active polling after a physical change
+(waiting for locking / unlocking / door opening / door closing). **Do not
+abuse from it!**
 
 ## Troubleshooting
 

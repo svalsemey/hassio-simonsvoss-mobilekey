@@ -49,10 +49,12 @@
       "settings": {
         "title": "Paramètres MobileKey",
         "data": {
-          "scan_interval": "Intervalle d’interrogation"
+          "scan_interval": "Intervalle d’interrogation",
+          "user_agent": "Agent utilisateur"
         },
         "data_description": {
-          "scan_interval": "À quelle fréquence l’état du système est récupéré depuis le cloud MobileKey, en secondes."
+          "scan_interval": "À quelle fréquence l’état du système est récupéré depuis le cloud MobileKey, en secondes.",
+          "user_agent": "En-tête HTTP User-Agent envoyé avec chaque requête au cloud MobileKey. Ne le modifiez que si le cloud cesse d’accepter celui par défaut."
         }
       },
       "create_key": {
@@ -111,6 +113,7 @@
       "cannot_connect": "Échec de connexion",
       "invalid_auth": "Authentification invalide",
       "invalid_datetime": "Saisissez une date et une heure valides",
+      "invalid_user_agent": "L’agent utilisateur ne doit contenir que des caractères ASCII imprimables",
       "invalid_validity_window": "La fin de la période de validité doit être postérieure à son début"
     },
     "abort": {
@@ -135,6 +138,9 @@
     "binary_sensor": {
       "expired": {
         "name": "Expirée"
+      },
+      "last_api_call_successful": {
+        "name": "Dernier appel API réussi"
       },
       "pending_task": {
         "name": "Tâche de programmation en attente"

@@ -7,6 +7,12 @@
           "on": "mdi:calendar-remove"
         }
       },
+      "last_api_call_successful": {
+        "default": "mdi:cloud-check-variant",
+        "state": {
+          "off": "mdi:cloud-alert"
+        }
+      },
       "pending_task": {
         "default": "mdi:progress-wrench"
       },

@@ -95,14 +95,11 @@ class MobileKeyLockButton(MobileKeyLockEntity, ButtonEntity):
     def available(self) -> bool:
         """Return whether a command can currently be sent to the lock.
 
-        Buttons deliberately ignore polling failures: commands go through
-        a separate endpoint that may still succeed. They only require the
-        lock to exist in the last known data and no command of their own
-        to be awaiting acknowledgment.
+        Commands go through a dedicated endpoint that may succeed while
+        polling fails, so only an in-flight command of this button or the
+        disappearance of the lock makes it unavailable.
         """
-        return (
-            not self._command_in_flight and self._lock_id in self.coordinator.data.locks
-        )
+        return not self._command_in_flight and super().available
 
     async def async_press(self) -> None:
         """Send the command of this button to the lock through the cloud.
@@ -135,15 +132,6 @@ class MobileKeySystemButton(MobileKeySystemEntity, ButtonEntity):
     """Button acting on the MobileKey locking system."""
 
     entity_description: MobileKeySystemButtonDescription
-
-    @property
-    def available(self) -> bool:
-        """Return whether the button is available, which is always the case.
-
-        A manual refresh is precisely most useful while cloud polling is
-        failing.
-        """
-        return True
 
     async def async_press(self) -> None:
         """Execute the system action of this button."""

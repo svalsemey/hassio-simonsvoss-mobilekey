@@ -49,10 +49,12 @@
       "settings": {
         "title": "MobileKey settings",
         "data": {
-          "scan_interval": "Polling interval"
+          "scan_interval": "Polling interval",
+          "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "How often the locking system state is fetched from the MobileKey cloud, in seconds."
+          "scan_interval": "How often the locking system state is fetched from the MobileKey cloud, in seconds.",
+          "user_agent": "HTTP User-Agent header sent with every request to the MobileKey cloud. Change it only if the cloud stops accepting the default one."
         }
       },
       "create_key": {
@@ -111,6 +113,7 @@
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Invalid authentication",
       "invalid_datetime": "Enter a valid date and time",
+      "invalid_user_agent": "The user agent must only contain printable ASCII characters",
       "invalid_validity_window": "The end of the validity period must be after its start"
     },
     "abort": {
@@ -135,6 +138,9 @@
     "binary_sensor": {
       "expired": {
         "name": "Expired"
+      },
+      "last_api_call_successful": {
+        "name": "Last API call successful"
       },
       "pending_task": {
         "name": "Pending programming task"

@@ -4,6 +4,9 @@ from typing import Final
 
 DOMAIN: Final = "simonsvoss_mobilekey"
 
+# Option storing the HTTP User-Agent header sent to the cloud service.
+CONF_USER_AGENT: Final = "user_agent"
+
 # Base URL of the SimonsVoss MobileKey cloud service.
 API_URL_BASE: Final = "https://api.my-mobilekey.com/api/v10"
 
@@ -16,7 +19,9 @@ ENDPOINT_SYSTEM_LOADLOCKING: Final = f"{API_URL_BASE}/lock-system/loadLockingSys
 ENDPOINT_PERFORMREQUEST: Final = f"{API_URL_BASE}/lock-system/performRequest"
 
 AUTH_METHOD: Final = "GET"
-USER_AGENT: Final = "MobileKey_iOS/2.8.0.2026082404"
+# Default User-Agent header, mirroring the MobileKey mobile application.
+# Overridable per config entry through the options flow.
+USER_AGENT_DEFAULT: Final = "MobileKey_iOS/2.8.0.2026082404"
 
 ## Cookies
 # Session cookie issued by the cloud service after successful authentication.

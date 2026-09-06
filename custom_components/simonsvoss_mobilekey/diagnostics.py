@@ -30,5 +30,6 @@ async def async_get_config_entry_diagnostics(
             "options": dict(entry.options),
         },
         "last_update_success": coordinator.last_update_success,
+        "last_api_call_successful": coordinator.client.last_call_successful,
         "system": async_redact_data(asdict(coordinator.data), TO_REDACT),
     }
