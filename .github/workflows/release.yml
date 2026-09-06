@@ -1,4 +1,4 @@
-name: Release (validated)
+name: Release (validated, HACS zip_release)
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           from pathlib import Path
 
           tag = os.environ.get("GITHUB_REF_NAME", "")
-          integration_dir = Path(os.environ["INTEGRATION_DIR"])
+          integration_path = Path(os.environ["INTEGRATION_PATH"])
           zip_name = os.environ["ZIP_NAME"]
 
           # 1) Tag format
@@ -42,12 +42,12 @@ jobs:
               print("Expected: vX.Y.Z or vX.Y.Z-suffix")
               sys.exit(1)
 
-          expected_version = tag[1:]  # strip leading v
+          expected_version = tag[1:]  # strip leading "v"
 
           # 2) manifest.json version check
-          manifest_path = integration_dir / "manifest.json"
+          manifest_path = integration_path / "manifest.json"
           if not manifest_path.exists():
-              print(f"❌ Missing manifest: {manifest_path}")
+              print(f"❌ Missing manifest.json: {manifest_path}")
               sys.exit(1)
 
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -66,7 +66,7 @@ jobs:
 
           hacs = json.loads(hacs_path.read_text(encoding="utf-8"))
           if hacs.get("zip_release") is not True:
-              print("❌ hacs.json must contain: \"zip_release\": true")
+              print('❌ hacs.json must contain: "zip_release": true')
               sys.exit(1)
 
           hacs_filename = hacs.get("filename")
@@ -76,28 +76,32 @@ jobs:
               print(f"   hacs.json value  : {hacs_filename}")
               sys.exit(1)
 
-          # Basic integration folder checks
-          required = [
-              integration_dir / "__init__.py",
-              integration_dir / "manifest.json",
+          # Basic source checks
+          required_files = [
+              integration_path / "__init__.py",
+              integration_path / "manifest.json",
           ]
-          missing = [str(p) for p in required if not p.exists()]
+          missing = [str(p) for p in required_files if not p.exists()]
           if missing:
-              print("❌ Missing required integration files:")
+              print("❌ Missing required files in integration folder:")
               for m in missing:
                   print(f"   - {m}")
               sys.exit(1)
 
-          print("✅ Tag/manifest/hacs checks passed")
+          print("✅ Tag / manifest / hacs.json checks passed")
           PY
 
-      - name: Build release zip
+      - name: Build HACS release zip (flat root)
         shell: bash
         run: |
           mkdir -p dist
-          zip -r "dist/${ZIP_NAME}" "${INTEGRATION_DIR}"
+          # IMPORTANT:
+          # HACS extracts this zip directly into custom_components/lifedomus
+          # so the archive must contain integration files at root (not custom_components/lifedomus/*).
+          cd "${INTEGRATION_PATH}"
+          zip -r "../../../dist/${ZIP_NAME}" .
 
-      - name: Validate zip structure
+      - name: Validate zip structure for HACS
         shell: bash
         run: |
           python - <<'PY'
@@ -106,12 +110,13 @@ jobs:
           import zipfile
 
           zip_path = f"dist/{os.environ['ZIP_NAME']}"
-          prefix = os.environ["INTEGRATION_DIR"].rstrip("/") + "/"
 
-          required_entries = {
-              prefix + "__init__.py",
-              prefix + "manifest.json",
-          }
+          required_root_entries = {"__init__.py", "manifest.json"}
+
+          forbidden_prefixes = (
+              "custom_components/",
+              "./custom_components/",
+          )
 
           with zipfile.ZipFile(zip_path, "r") as zf:
               names = zf.namelist()
@@ -120,24 +125,25 @@ jobs:
               print("❌ Zip is empty")
               sys.exit(1)
 
-          # Ensure all files are inside the expected integration folder
-          bad = [n for n in names if not n.startswith(prefix)]
+          # Must NOT embed custom_components/... in zip_release package
+          bad = [n for n in names if n.startswith(forbidden_prefixes)]
           if bad:
-              print("❌ Zip contains unexpected paths (must all start with "
-                    f"{prefix}):")
+              print("❌ Zip contains forbidden prefixed paths for HACS zip_release:")
               for n in bad[:20]:
                   print("   -", n)
+              print("Expected files at archive root, e.g. __init__.py, manifest.json")
               sys.exit(1)
 
-          # Ensure required files exist in archive
-          missing = sorted(required_entries - set(names))
+          # Required files at root
+          root_files = {n for n in names if "/" not in n.strip("/")}
+          missing = sorted(required_root_entries - root_files)
           if missing:
-              print("❌ Zip missing required entries:")
+              print("❌ Required root files missing in zip:")
               for m in missing:
                   print("   -", m)
               sys.exit(1)
 
-          print("✅ Zip structure is valid")
+          print("✅ Zip structure valid for HACS zip_release")
           PY
 
       - name: Show artifact details
@@ -146,7 +152,7 @@ jobs:
           sha256sum "dist/${ZIP_NAME}"
 
       - name: Create/Update GitHub Release with asset
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/${{ env.ZIP_NAME }}
           generate_release_notes: true
