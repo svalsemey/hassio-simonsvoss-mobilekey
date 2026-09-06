@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connetti a MobileKey",
+        "description": "Accedi con il tuo account SimonsVoss MobileKey.",
+        "data": {
+          "username": "Nome utente",
+          "password": "Password",
+          "scan_interval": "Intervallo di polling"
+        },
+        "data_description": {
+          "username": "L'indirizzo email del tuo account MobileKey.",
+          "password": "La password del tuo account MobileKey.",
+          "scan_interval": "Con quale frequenza lo stato del sistema viene recuperato dal cloud MobileKey, in secondi."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ri-autenticazione MobileKey",
+        "description": "La password per {username} non è più valida. Inserisci la password attuale.",
+        "data": {
+          "password": "Password"
+        },
+        "data_description": {
+          "password": "La password del tuo account MobileKey."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Connessione non riuscita",
+      "invalid_auth": "Autenticazione non valida",
+      "unknown": "Errore imprevisto"
+    },
+    "abort": {
+      "already_configured": "L'account è già configurato",
+      "reauth_successful": "La ri-autenticazione è riuscita"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni MobileKey",
+        "menu_options": {
+          "settings": "Configura l'integrazione",
+          "create_key": "Crea una chiave Key4Friends",
+          "edit_key": "Modifica una chiave Key4Friends"
+        }
+      },
+      "settings": {
+        "title": "Impostazioni MobileKey",
+        "data": {
+          "scan_interval": "Intervallo di polling",
+          "user_agent": "User agent"
+        },
+        "data_description": {
+          "scan_interval": "Con quale frequenza lo stato dell'impianto di chiusura viene recuperato dal cloud MobileKey, in secondi.",
+          "user_agent": "Intestazione HTTP User-Agent inviata con ogni richiesta al cloud MobileKey. Modificala solo se il cloud smette di accettare quella predefinita."
+        }
+      },
+      "create_key": {
+        "title": "Crea una chiave Key4Friends",
+        "description": "Invita un ospite tramite email. L'ospite utilizza le serrature autorizzate con l'app SimonsVoss Key4Friends.",
+        "data": {
+          "name": "Nome",
+          "email": "Email",
+          "language": "Lingua dell'ospite",
+          "valid_from": "Valido dal",
+          "valid_to": "Valido fino al",
+          "authorized_locks": "Serrature autorizzate"
+        },
+        "data_description": {
+          "name": "Nome descrittivo della chiave virtuale.",
+          "email": "Indirizzo email a cui viene inviato l'invito. Non può essere modificato in seguito.",
+          "language": "Lingua dell'invito e dell'app Key4Friends.",
+          "valid_from": "Inizio del periodo di validità, nel fuso orario di Home Assistant.",
+          "valid_to": "Fine del periodo di validità, nel fuso orario di Home Assistant.",
+          "authorized_locks": "Serrature che l'ospite può azionare. I nomi mostrati all'ospite vengono verificati nel passaggio successivo."
+        }
+      },
+      "edit_key": {
+        "title": "Modifica una chiave Key4Friends",
+        "data": {
+          "key": "Chiave"
+        },
+        "data_description": {
+          "key": "La chiave virtuale da modificare."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Modifica una chiave Key4Friends",
+        "description": "Aggiorna la chiave virtuale {name} ({email}). L'indirizzo email non può essere modificato.",
+        "data": {
+          "name": "Nome",
+          "language": "Lingua dell'ospite",
+          "valid_from": "Valido dal",
+          "valid_to": "Valido fino al",
+          "authorized_locks": "Serrature autorizzate"
+        },
+        "data_description": {
+          "name": "Nome descrittivo della chiave virtuale.",
+          "language": "Lingua dell'invito e dell'app Key4Friends.",
+          "valid_from": "Inizio del periodo di validità, nel fuso orario di Home Assistant.",
+          "valid_to": "Fine del periodo di validità, nel fuso orario di Home Assistant.",
+          "authorized_locks": "Serrature che l'ospite può azionare."
+        }
+      },
+      "guest_lock_names": {
+        "title": "Nomi delle serrature per l'ospite",
+        "description": "L'ospite che utilizza {name} vede questi nomi nell'app Key4Friends. Ogni campo è etichettato con il nome di sistema della serratura corrispondente; lascia un campo vuoto per mostrare il nome di sistema."
+      }
+    },
+    "error": {
+      "cannot_connect": "Connessione non riuscita",
+      "invalid_auth": "Autenticazione non valida",
+      "invalid_datetime": "Inserisci una data e un'ora valide",
+      "invalid_user_agent": "Lo user agent deve contenere solo caratteri ASCII stampabili",
+      "invalid_validity_window": "La fine del periodo di validità deve essere successiva al suo inizio"
+    },
+    "abort": {
+      "not_loaded": "L'integrazione deve essere caricata per gestire le chiavi Key4Friends",
+      "key_not_found": "La chiave Key4Friends selezionata non esiste più"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Inglese",
+        "de": "Tedesco",
+        "fr": "Francese",
+        "it": "Italiano",
+        "nl": "Olandese",
+        "sv": "Svedese",
+        "da": "Danese"
+      }
+    }
+  },
+  "services": {
+    "key4friends_create": {
+      "name": "Crea una chiave Key4Friends",
+      "description": "Crea una chiave ospite Key4Friends e invia l'invito all'ospite via email.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account MobileKey",
+          "description": "L'account MobileKey in cui viene creata la chiave."
+        },
+        "name": {
+          "name": "Nome",
+          "description": "Nome descrittivo della chiave virtuale."
+        },
+        "email": {
+          "name": "Email",
+          "description": "Indirizzo email a cui viene inviato l'invito. Non può essere modificato in seguito."
+        },
+        "language": {
+          "name": "Lingua dell'ospite",
+          "description": "Lingua dell'invito e dell'app Key4Friends."
+        },
+        "valid_from": {
+          "name": "Valido dal",
+          "description": "Inizio del periodo di validità, nel fuso orario di Home Assistant."
+        },
+        "valid_to": {
+          "name": "Valido fino al",
+          "description": "Fine del periodo di validità, nel fuso orario di Home Assistant."
+        },
+        "locks": {
+          "name": "Serrature autorizzate",
+          "description": "Serrature che l'ospite può azionare."
+        },
+        "lock_names": {
+          "name": "Nomi delle serrature per l'ospite",
+          "description": "Nomi mostrati all'ospite invece dei nomi di sistema delle serrature. Fornisci una voce per ogni serratura da rinominare, con l'ID del dispositivo della serratura come chiave e il nome da mostrare come valore. Le serrature rinominate devono essere tra quelle autorizzate; le serrature senza una voce mostrano il loro nome di sistema."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Elimina una chiave Key4Friends",
+      "description": "Elimina una chiave ospite Key4Friends. L'ospite viene notificato e perde immediatamente l'accesso.",
+      "fields": {
+        "device_id": {
+          "name": "Chiave Key4Friends",
+          "description": "La chiave Key4Friends da eliminare."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Recupera una chiave Key4Friends",
+      "description": "Restituisce i dettagli di una chiave ospite Key4Friends, incluse le sue autorizzazioni sulle serrature.",
+      "fields": {
+        "device_id": {
+          "name": "Chiave Key4Friends",
+          "description": "La chiave Key4Friends da consultare."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Elenca le chiavi Key4Friends",
+      "description": "Restituisce tutte le chiavi ospite Key4Friends di un account MobileKey.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account MobileKey",
+          "description": "L'account MobileKey le cui chiavi vengono elencate."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Aggiorna una chiave Key4Friends",
+      "description": "Aggiorna una chiave ospite Key4Friends e notifica l'ospite. I campi omessi rimangono invariati; l'indirizzo email non può essere modificato.",
+      "fields": {
+        "device_id": {
+          "name": "Chiave Key4Friends",
+          "description": "La chiave Key4Friends da aggiornare."
+        },
+        "name": {
+          "name": "Nome",
+          "description": "Nome descrittivo della chiave virtuale."
+        },
+        "language": {
+          "name": "Lingua dell'ospite",
+          "description": "Lingua dell'invito e dell'app Key4Friends."
+        },
+        "valid_from": {
+          "name": "Valido dal",
+          "description": "Inizio del periodo di validità, nel fuso orario di Home Assistant."
+        },
+        "valid_to": {
+          "name": "Valido fino al",
+          "description": "Fine del periodo di validità, nel fuso orario di Home Assistant."
+        },
+        "locks": {
+          "name": "Serrature autorizzate",
+          "description": "Serrature che l'ospite può azionare. Sostituisce le autorizzazioni attuali."
+        },
+        "lock_names": {
+          "name": "Nomi delle serrature per l'ospite",
+          "description": "Nomi mostrati all'ospite invece dei nomi di sistema delle serrature. Fornisci una voce per ogni serratura da rinominare, con l'ID del dispositivo della serratura come chiave e il nome da mostrare come valore. Le serrature rinominate devono essere tra quelle autorizzate; le serrature senza una voce mantengono il nome attuale mostrato all'ospite, e le serrature autorizzate di recente mostrano per impostazione predefinita il loro nome di sistema."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "expired": {
+        "name": "Scaduto"
+      },
+      "last_api_call_successful": {
+        "name": "Ultima chiamata API riuscita"
+      },
+      "pending_task": {
+        "name": "Attività di programmazione in sospeso"
+      },
+      "permanent_opening": {
+        "name": "Apertura permanente"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Apri"
+      },
+      "read_audit_trail": {
+        "name": "Leggi elenco accessi"
+      },
+      "refresh": {
+        "name": "Aggiorna"
+      }
+    },
+    "sensor": {
+      "door_open_alert_delay": {
+        "name": "Ritardo avviso porta aperta"
+      },
+      "ident_medium_authorizations": {
+        "name": "Serrature autorizzate"
+      },
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Nome"
+      },
+      "key4friends_authorizations": {
+        "name": "Serrature autorizzate"
+      },
+      "key4friends_email": {
+        "name": "Email"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Lingua dell'ospite",
+        "state": {
+          "en": "Inglese",
+          "de": "Tedesco",
+          "fr": "Francese",
+          "it": "Italiano",
+          "nl": "Olandese",
+          "sv": "Svedese",
+          "da": "Danese"
+        }
+      },
+      "key4friends_name": {
+        "name": "Nome"
+      },
+      "key4friends_valid_from": {
+        "name": "Valido dal"
+      },
+      "key4friends_valid_to": {
+        "name": "Valido fino al"
+      },
+      "last_update": {
+        "name": "Ultimo aggiornamento"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
+      "mobile_key_id": {
+        "name": "ID MobileKey"
+      },
+      "opening_timeout": {
+        "name": "Timeout di apertura"
+      },
+      "signal_quality": {
+        "name": "Qualità del segnale",
+        "state": {
+          "none": "Nessun segnale",
+          "weak": "Debole",
+          "good": "Buono",
+          "excellent": "Eccellente"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Autenticazione non riuscita per l'account MobileKey {username}."
+    },
+    "cannot_connect": {
+      "message": "Impossibile raggiungere il servizio cloud MobileKey: {error}"
+    },
+    "custom_name_not_authorized": {
+      "message": "Un nome di serratura per l'ospite si riferisce a {device}, che non è tra le serrature autorizzate della chiave."
+    },
+    "device_not_found": {
+      "message": "Il dispositivo {device_id} non è un dispositivo di un account MobileKey."
+    },
+    "entry_not_found": {
+      "message": "L'account MobileKey selezionato non è configurato."
+    },
+    "entry_not_loaded": {
+      "message": "L'account MobileKey {title} attualmente non è caricato."
+    },
+    "incomplete_validity_window": {
+      "message": "Sono richiesti sia l'inizio che la fine del periodo di validità."
+    },
+    "invalid_validity_window": {
+      "message": "La fine del periodo di validità deve essere successiva al suo inizio."
+    },
+    "key4friends_delete_failed": {
+      "message": "Non è stato possibile eliminare la chiave Key4Friends {name} dal cloud MobileKey."
+    },
+    "key4friends_not_found": {
+      "message": "Il dispositivo {device} non è una chiave Key4Friends esistente."
+    },
+    "key4friends_save_failed": {
+      "message": "Non è stato possibile salvare la chiave Key4Friends {name} nel cloud MobileKey."
+    },
+    "lock_command_failed": {
+      "message": "Non è stato possibile inviare il comando alla serratura {name}."
+    },
+    "not_a_lock": {
+      "message": "Il dispositivo {device} non è una serratura dell'account MobileKey di destinazione."
+    }
+  }
+}

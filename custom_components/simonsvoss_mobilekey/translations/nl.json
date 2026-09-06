@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Verbinden met MobileKey",
+        "description": "Log in met uw SimonsVoss MobileKey-account.",
+        "data": {
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "scan_interval": "Pollinginterval"
+        },
+        "data_description": {
+          "username": "Het e-mailadres van uw MobileKey-account.",
+          "password": "Het wachtwoord van uw MobileKey-account.",
+          "scan_interval": "Hoe vaak de systeemstatus wordt opgehaald bij de MobileKey-cloud, in seconden."
+        }
+      },
+      "reauth_confirm": {
+        "title": "MobileKey opnieuw verifiëren",
+        "description": "Het wachtwoord voor {username} is niet meer geldig. Voer het huidige wachtwoord in.",
+        "data": {
+          "password": "Wachtwoord"
+        },
+        "data_description": {
+          "password": "Het wachtwoord van uw MobileKey-account."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbinden mislukt",
+      "invalid_auth": "Ongeldige authenticatie",
+      "unknown": "Onverwachte fout"
+    },
+    "abort": {
+      "already_configured": "Account is al geconfigureerd",
+      "reauth_successful": "Opnieuw verifiëren is gelukt"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MobileKey-opties",
+        "menu_options": {
+          "settings": "Integratie configureren",
+          "create_key": "Een Key4Friends-sleutel aanmaken",
+          "edit_key": "Een Key4Friends-sleutel bewerken"
+        }
+      },
+      "settings": {
+        "title": "MobileKey-instellingen",
+        "data": {
+          "scan_interval": "Pollinginterval",
+          "user_agent": "User agent"
+        },
+        "data_description": {
+          "scan_interval": "Hoe vaak de status van het sluitsysteem wordt opgehaald bij de MobileKey-cloud, in seconden.",
+          "user_agent": "HTTP User-Agent-header die met elk verzoek naar de MobileKey-cloud wordt verzonden. Wijzig deze alleen als de cloud de standaardwaarde niet meer accepteert."
+        }
+      },
+      "create_key": {
+        "title": "Een Key4Friends-sleutel aanmaken",
+        "description": "Nodig een gast uit via e-mail. De gast bedient de geautoriseerde sloten met de SimonsVoss Key4Friends-app.",
+        "data": {
+          "name": "Naam",
+          "email": "E-mail",
+          "language": "Taal van de gast",
+          "valid_from": "Geldig vanaf",
+          "valid_to": "Geldig tot",
+          "authorized_locks": "Geautoriseerde sloten"
+        },
+        "data_description": {
+          "name": "Vriendelijke naam van de virtuele sleutel.",
+          "email": "E-mailadres waarnaar de uitnodiging wordt verzonden. Dit kan later niet meer worden gewijzigd.",
+          "language": "Taal van de uitnodiging en van de Key4Friends-app.",
+          "valid_from": "Begin van de geldigheidsperiode, in de tijdzone van Home Assistant.",
+          "valid_to": "Einde van de geldigheidsperiode, in de tijdzone van Home Assistant.",
+          "authorized_locks": "Sloten die de gast mag bedienen. De namen die aan de gast worden getoond, worden in de volgende stap gecontroleerd."
+        }
+      },
+      "edit_key": {
+        "title": "Een Key4Friends-sleutel bewerken",
+        "data": {
+          "key": "Sleutel"
+        },
+        "data_description": {
+          "key": "De te bewerken virtuele sleutel."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Een Key4Friends-sleutel bewerken",
+        "description": "Werk de virtuele sleutel {name} ({email}) bij. Het e-mailadres kan niet worden gewijzigd.",
+        "data": {
+          "name": "Naam",
+          "language": "Taal van de gast",
+          "valid_from": "Geldig vanaf",
+          "valid_to": "Geldig tot",
+          "authorized_locks": "Geautoriseerde sloten"
+        },
+        "data_description": {
+          "name": "Vriendelijke naam van de virtuele sleutel.",
+          "language": "Taal van de uitnodiging en van de Key4Friends-app.",
+          "valid_from": "Begin van de geldigheidsperiode, in de tijdzone van Home Assistant.",
+          "valid_to": "Einde van de geldigheidsperiode, in de tijdzone van Home Assistant.",
+          "authorized_locks": "Sloten die de gast mag bedienen."
+        }
+      },
+      "guest_lock_names": {
+        "title": "Slotnamen voor de gast",
+        "description": "De gast die {name} gebruikt, ziet deze namen in de Key4Friends-app. Elk veld is gelabeld met de systeemnaam van het bijbehorende slot; laat een veld leeg om de systeemnaam te tonen."
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbinden mislukt",
+      "invalid_auth": "Ongeldige authenticatie",
+      "invalid_datetime": "Voer een geldige datum en tijd in",
+      "invalid_user_agent": "De user agent mag alleen afdrukbare ASCII-tekens bevatten",
+      "invalid_validity_window": "Het einde van de geldigheidsperiode moet na het begin liggen"
+    },
+    "abort": {
+      "not_loaded": "De integratie moet geladen zijn om Key4Friends-sleutels te beheren",
+      "key_not_found": "De geselecteerde Key4Friends-sleutel bestaat niet meer"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Engels",
+        "de": "Duits",
+        "fr": "Frans",
+        "it": "Italiaans",
+        "nl": "Nederlands",
+        "sv": "Zweeds",
+        "da": "Deens"
+      }
+    }
+  },
+  "services": {
+    "key4friends_create": {
+      "name": "Een Key4Friends-sleutel aanmaken",
+      "description": "Maakt een Key4Friends-gastsleutel aan en stuurt de uitnodiging per e-mail naar de gast.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-account",
+          "description": "Het MobileKey-account waarin de sleutel wordt aangemaakt."
+        },
+        "name": {
+          "name": "Naam",
+          "description": "Vriendelijke naam van de virtuele sleutel."
+        },
+        "email": {
+          "name": "E-mail",
+          "description": "E-mailadres waarnaar de uitnodiging wordt verzonden. Dit kan later niet meer worden gewijzigd."
+        },
+        "language": {
+          "name": "Taal van de gast",
+          "description": "Taal van de uitnodiging en van de Key4Friends-app."
+        },
+        "valid_from": {
+          "name": "Geldig vanaf",
+          "description": "Begin van de geldigheidsperiode, in de tijdzone van Home Assistant."
+        },
+        "valid_to": {
+          "name": "Geldig tot",
+          "description": "Einde van de geldigheidsperiode, in de tijdzone van Home Assistant."
+        },
+        "locks": {
+          "name": "Geautoriseerde sloten",
+          "description": "Sloten die de gast mag bedienen."
+        },
+        "lock_names": {
+          "name": "Slotnamen voor de gast",
+          "description": "Namen die aan de gast worden getoond in plaats van de systeemnamen van de sloten. Geef één vermelding per te hernoemen slot op, met het apparaat-ID van het slot als sleutel en de te tonen naam als waarde. Hernoemde sloten moeten bij de geautoriseerde sloten horen; sloten zonder vermelding tonen hun systeemnaam."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Een Key4Friends-sleutel verwijderen",
+      "description": "Verwijdert een Key4Friends-gastsleutel. De gast wordt op de hoogte gebracht en verliest onmiddellijk de toegang.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-sleutel",
+          "description": "De te verwijderen Key4Friends-sleutel."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Een Key4Friends-sleutel opvragen",
+      "description": "Geeft de details van een Key4Friends-gastsleutel terug, inclusief de slotautorisaties.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-sleutel",
+          "description": "De op te vragen Key4Friends-sleutel."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Key4Friends-sleutels weergeven",
+      "description": "Geeft alle Key4Friends-gastsleutels van een MobileKey-account terug.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-account",
+          "description": "Het MobileKey-account waarvan de sleutels worden weergegeven."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Een Key4Friends-sleutel bijwerken",
+      "description": "Werkt een Key4Friends-gastsleutel bij en informeert de gast. Weggelaten velden blijven ongewijzigd; het e-mailadres kan niet worden gewijzigd.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-sleutel",
+          "description": "De bij te werken Key4Friends-sleutel."
+        },
+        "name": {
+          "name": "Naam",
+          "description": "Vriendelijke naam van de virtuele sleutel."
+        },
+        "language": {
+          "name": "Taal van de gast",
+          "description": "Taal van de uitnodiging en van de Key4Friends-app."
+        },
+        "valid_from": {
+          "name": "Geldig vanaf",
+          "description": "Begin van de geldigheidsperiode, in de tijdzone van Home Assistant."
+        },
+        "valid_to": {
+          "name": "Geldig tot",
+          "description": "Einde van de geldigheidsperiode, in de tijdzone van Home Assistant."
+        },
+        "locks": {
+          "name": "Geautoriseerde sloten",
+          "description": "Sloten die de gast mag bedienen. Vervangt de huidige autorisaties."
+        },
+        "lock_names": {
+          "name": "Slotnamen voor de gast",
+          "description": "Namen die aan de gast worden getoond in plaats van de systeemnamen van de sloten. Geef één vermelding per te hernoemen slot op, met het apparaat-ID van het slot als sleutel en de te tonen naam als waarde. Hernoemde sloten moeten bij de geautoriseerde sloten horen; sloten zonder vermelding behouden hun huidige naam voor de gast, en nieuw geautoriseerde sloten krijgen standaard hun systeemnaam."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "expired": {
+        "name": "Verlopen"
+      },
+      "last_api_call_successful": {
+        "name": "Laatste API-aanroep geslaagd"
+      },
+      "pending_task": {
+        "name": "Openstaande programmeertaak"
+      },
+      "permanent_opening": {
+        "name": "Permanente opening"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Openen"
+      },
+      "read_audit_trail": {
+        "name": "Toegangslijst lezen"
+      },
+      "refresh": {
+        "name": "Vernieuwen"
+      }
+    },
+    "sensor": {
+      "door_open_alert_delay": {
+        "name": "Vertraging deuropenwaarschuwing"
+      },
+      "ident_medium_authorizations": {
+        "name": "Geautoriseerde sloten"
+      },
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Naam"
+      },
+      "key4friends_authorizations": {
+        "name": "Geautoriseerde sloten"
+      },
+      "key4friends_email": {
+        "name": "E-mail"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Taal van de gast",
+        "state": {
+          "en": "Engels",
+          "de": "Duits",
+          "fr": "Frans",
+          "it": "Italiaans",
+          "nl": "Nederlands",
+          "sv": "Zweeds",
+          "da": "Deens"
+        }
+      },
+      "key4friends_name": {
+        "name": "Naam"
+      },
+      "key4friends_valid_from": {
+        "name": "Geldig vanaf"
+      },
+      "key4friends_valid_to": {
+        "name": "Geldig tot"
+      },
+      "last_update": {
+        "name": "Laatste update"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey-ID"
+      },
+      "opening_timeout": {
+        "name": "Openingstime-out"
+      },
+      "signal_quality": {
+        "name": "Signaalkwaliteit",
+        "state": {
+          "none": "Geen signaal",
+          "weak": "Zwak",
+          "good": "Goed",
+          "excellent": "Uitstekend"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Authenticatie mislukt voor MobileKey-account {username}."
+    },
+    "cannot_connect": {
+      "message": "Kan de MobileKey-clouddienst niet bereiken: {error}"
+    },
+    "custom_name_not_authorized": {
+      "message": "Een slotnaam voor de gast verwijst naar {device}, dat niet bij de geautoriseerde sloten van de sleutel hoort."
+    },
+    "device_not_found": {
+      "message": "Apparaat {device_id} is geen apparaat van een MobileKey-account."
+    },
+    "entry_not_found": {
+      "message": "Het geselecteerde MobileKey-account is niet geconfigureerd."
+    },
+    "entry_not_loaded": {
+      "message": "Het MobileKey-account {title} is momenteel niet geladen."
+    },
+    "incomplete_validity_window": {
+      "message": "Zowel het begin als het einde van de geldigheidsperiode zijn vereist."
+    },
+    "invalid_validity_window": {
+      "message": "Het einde van de geldigheidsperiode moet na het begin liggen."
+    },
+    "key4friends_delete_failed": {
+      "message": "De Key4Friends-sleutel {name} kon niet worden verwijderd uit de MobileKey-cloud."
+    },
+    "key4friends_not_found": {
+      "message": "Apparaat {device} is geen bestaande Key4Friends-sleutel."
+    },
+    "key4friends_save_failed": {
+      "message": "De Key4Friends-sleutel {name} kon niet worden opgeslagen in de MobileKey-cloud."
+    },
+    "lock_command_failed": {
+      "message": "Het commando kon niet naar het slot {name} worden verzonden."
+    },
+    "not_a_lock": {
+      "message": "Apparaat {device} is geen slot van het betreffende MobileKey-account."
+    }
+  }
+}

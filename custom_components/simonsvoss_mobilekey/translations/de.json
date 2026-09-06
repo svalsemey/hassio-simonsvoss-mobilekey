@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit MobileKey verbinden",
+        "description": "Melden Sie sich mit Ihrem SimonsVoss MobileKey-Konto an.",
+        "data": {
+          "username": "Benutzername",
+          "password": "Passwort",
+          "scan_interval": "Abfrageintervall"
+        },
+        "data_description": {
+          "username": "Die E-Mail-Adresse Ihres MobileKey-Kontos.",
+          "password": "Das Passwort Ihres MobileKey-Kontos.",
+          "scan_interval": "Wie oft der Systemstatus von der MobileKey-Cloud abgerufen wird, in Sekunden."
+        }
+      },
+      "reauth_confirm": {
+        "title": "MobileKey erneut authentifizieren",
+        "description": "Das Passwort für {username} ist nicht mehr gültig. Geben Sie das aktuelle Passwort ein.",
+        "data": {
+          "password": "Passwort"
+        },
+        "data_description": {
+          "password": "Das Passwort Ihres MobileKey-Kontos."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Konto ist bereits konfiguriert",
+      "reauth_successful": "Erneute Authentifizierung war erfolgreich"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MobileKey-Optionen",
+        "menu_options": {
+          "settings": "Integration konfigurieren",
+          "create_key": "Einen Key4Friends-Schlüssel erstellen",
+          "edit_key": "Einen Key4Friends-Schlüssel bearbeiten"
+        }
+      },
+      "settings": {
+        "title": "MobileKey-Einstellungen",
+        "data": {
+          "scan_interval": "Abfrageintervall",
+          "user_agent": "User-Agent"
+        },
+        "data_description": {
+          "scan_interval": "Wie oft der Status der Schließanlage von der MobileKey-Cloud abgerufen wird, in Sekunden.",
+          "user_agent": "HTTP-User-Agent-Header, der mit jeder Anfrage an die MobileKey-Cloud gesendet wird. Ändern Sie ihn nur, wenn die Cloud den Standardwert nicht mehr akzeptiert."
+        }
+      },
+      "create_key": {
+        "title": "Einen Key4Friends-Schlüssel erstellen",
+        "description": "Laden Sie einen Gast per E-Mail ein. Der Gast bedient die autorisierten Schlösser mit der SimonsVoss Key4Friends-App.",
+        "data": {
+          "name": "Name",
+          "email": "E-Mail",
+          "language": "Gastsprache",
+          "valid_from": "Gültig von",
+          "valid_to": "Gültig bis",
+          "authorized_locks": "Autorisierte Schlösser"
+        },
+        "data_description": {
+          "name": "Anzeigename des virtuellen Schlüssels.",
+          "email": "E-Mail-Adresse, an die die Einladung gesendet wird. Sie kann später nicht mehr geändert werden.",
+          "language": "Sprache der Einladung und der Key4Friends-App.",
+          "valid_from": "Beginn des Gültigkeitszeitraums, in der Home Assistant-Zeitzone.",
+          "valid_to": "Ende des Gültigkeitszeitraums, in der Home Assistant-Zeitzone.",
+          "authorized_locks": "Schlösser, die der Gast bedienen darf. Die dem Gast angezeigten Namen werden im nächsten Schritt überprüft."
+        }
+      },
+      "edit_key": {
+        "title": "Einen Key4Friends-Schlüssel bearbeiten",
+        "data": {
+          "key": "Schlüssel"
+        },
+        "data_description": {
+          "key": "Der zu bearbeitende virtuelle Schlüssel."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Einen Key4Friends-Schlüssel bearbeiten",
+        "description": "Aktualisieren Sie den virtuellen Schlüssel {name} ({email}). Die E-Mail-Adresse kann nicht geändert werden.",
+        "data": {
+          "name": "Name",
+          "language": "Gastsprache",
+          "valid_from": "Gültig von",
+          "valid_to": "Gültig bis",
+          "authorized_locks": "Autorisierte Schlösser"
+        },
+        "data_description": {
+          "name": "Anzeigename des virtuellen Schlüssels.",
+          "language": "Sprache der Einladung und der Key4Friends-App.",
+          "valid_from": "Beginn des Gültigkeitszeitraums, in der Home Assistant-Zeitzone.",
+          "valid_to": "Ende des Gültigkeitszeitraums, in der Home Assistant-Zeitzone.",
+          "authorized_locks": "Schlösser, die der Gast bedienen darf."
+        }
+      },
+      "guest_lock_names": {
+        "title": "Schlossnamen für den Gast",
+        "description": "Der Gast, der {name} verwendet, sieht diese Namen in der Key4Friends-App. Jedes Feld ist mit dem Systemnamen des entsprechenden Schlosses beschriftet; lassen Sie ein Feld leer, um den Systemnamen anzuzeigen."
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "invalid_datetime": "Geben Sie ein gültiges Datum und eine gültige Uhrzeit ein",
+      "invalid_user_agent": "Der User-Agent darf nur druckbare ASCII-Zeichen enthalten",
+      "invalid_validity_window": "Das Ende des Gültigkeitszeitraums muss nach seinem Beginn liegen"
+    },
+    "abort": {
+      "not_loaded": "Die Integration muss geladen sein, um Key4Friends-Schlüssel zu verwalten",
+      "key_not_found": "Der ausgewählte Key4Friends-Schlüssel existiert nicht mehr"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Englisch",
+        "de": "Deutsch",
+        "fr": "Französisch",
+        "it": "Italienisch",
+        "nl": "Niederländisch",
+        "sv": "Schwedisch",
+        "da": "Dänisch"
+      }
+    }
+  },
+  "services": {
+    "key4friends_create": {
+      "name": "Einen Key4Friends-Schlüssel erstellen",
+      "description": "Erstellt einen Key4Friends-Gastschlüssel und sendet die Einladung per E-Mail an den Gast.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-Konto",
+          "description": "Das MobileKey-Konto, in dem der Schlüssel erstellt wird."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Anzeigename des virtuellen Schlüssels."
+        },
+        "email": {
+          "name": "E-Mail",
+          "description": "E-Mail-Adresse, an die die Einladung gesendet wird. Sie kann später nicht mehr geändert werden."
+        },
+        "language": {
+          "name": "Gastsprache",
+          "description": "Sprache der Einladung und der Key4Friends-App."
+        },
+        "valid_from": {
+          "name": "Gültig von",
+          "description": "Beginn des Gültigkeitszeitraums, in der Home Assistant-Zeitzone."
+        },
+        "valid_to": {
+          "name": "Gültig bis",
+          "description": "Ende des Gültigkeitszeitraums, in der Home Assistant-Zeitzone."
+        },
+        "locks": {
+          "name": "Autorisierte Schlösser",
+          "description": "Schlösser, die der Gast bedienen darf."
+        },
+        "lock_names": {
+          "name": "Gast-Schlossnamen",
+          "description": "Namen, die dem Gast anstelle der Systemnamen der Schlösser angezeigt werden. Geben Sie einen Eintrag pro umzubenennendem Schloss an, mit der Geräte-ID des Schlosses als Schlüssel und dem anzuzeigenden Namen als Wert. Umbenannte Schlösser müssen zu den autorisierten Schlössern gehören; Schlösser ohne Eintrag zeigen ihren Systemnamen an."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Einen Key4Friends-Schlüssel löschen",
+      "description": "Löscht einen Key4Friends-Gastschlüssel. Der Gast wird benachrichtigt und verliert sofort den Zugang.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-Schlüssel",
+          "description": "Der zu löschende Key4Friends-Schlüssel."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Einen Key4Friends-Schlüssel abrufen",
+      "description": "Gibt die Details eines Key4Friends-Gastschlüssels zurück, einschließlich seiner Schlossautorisierungen.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-Schlüssel",
+          "description": "Der abzurufende Key4Friends-Schlüssel."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Key4Friends-Schlüssel auflisten",
+      "description": "Gibt alle Key4Friends-Gastschlüssel eines MobileKey-Kontos zurück.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-Konto",
+          "description": "Das MobileKey-Konto, dessen Schlüssel aufgelistet werden."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Einen Key4Friends-Schlüssel aktualisieren",
+      "description": "Aktualisiert einen Key4Friends-Gastschlüssel und benachrichtigt den Gast. Ausgelassene Felder bleiben unverändert; die E-Mail-Adresse kann nicht geändert werden.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-Schlüssel",
+          "description": "Der zu aktualisierende Key4Friends-Schlüssel."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Anzeigename des virtuellen Schlüssels."
+        },
+        "language": {
+          "name": "Gastsprache",
+          "description": "Sprache der Einladung und der Key4Friends-App."
+        },
+        "valid_from": {
+          "name": "Gültig von",
+          "description": "Beginn des Gültigkeitszeitraums, in der Home Assistant-Zeitzone."
+        },
+        "valid_to": {
+          "name": "Gültig bis",
+          "description": "Ende des Gültigkeitszeitraums, in der Home Assistant-Zeitzone."
+        },
+        "locks": {
+          "name": "Autorisierte Schlösser",
+          "description": "Schlösser, die der Gast bedienen darf. Ersetzt die aktuellen Autorisierungen."
+        },
+        "lock_names": {
+          "name": "Gast-Schlossnamen",
+          "description": "Namen, die dem Gast anstelle der Systemnamen der Schlösser angezeigt werden. Geben Sie einen Eintrag pro umzubenennendem Schloss an, mit der Geräte-ID des Schlosses als Schlüssel und dem anzuzeigenden Namen als Wert. Umbenannte Schlösser müssen zu den autorisierten Schlössern gehören; Schlösser ohne Eintrag behalten ihren aktuellen gastseitigen Namen, und neu autorisierte Schlösser verwenden standardmäßig ihren Systemnamen."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "expired": {
+        "name": "Abgelaufen"
+      },
+      "last_api_call_successful": {
+        "name": "Letzter API-Aufruf erfolgreich"
+      },
+      "pending_task": {
+        "name": "Ausstehende Programmieraufgabe"
+      },
+      "permanent_opening": {
+        "name": "Dauerhafte Öffnung"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Öffnen"
+      },
+      "read_audit_trail": {
+        "name": "Zugangsliste lesen"
+      },
+      "refresh": {
+        "name": "Aktualisieren"
+      }
+    },
+    "sensor": {
+      "door_open_alert_delay": {
+        "name": "Verzögerung der Türöffnungswarnung"
+      },
+      "ident_medium_authorizations": {
+        "name": "Autorisierte Schlösser"
+      },
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Name"
+      },
+      "key4friends_authorizations": {
+        "name": "Autorisierte Schlösser"
+      },
+      "key4friends_email": {
+        "name": "E-Mail"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Gastsprache",
+        "state": {
+          "en": "Englisch",
+          "de": "Deutsch",
+          "fr": "Französisch",
+          "it": "Italienisch",
+          "nl": "Niederländisch",
+          "sv": "Schwedisch",
+          "da": "Dänisch"
+        }
+      },
+      "key4friends_name": {
+        "name": "Name"
+      },
+      "key4friends_valid_from": {
+        "name": "Gültig von"
+      },
+      "key4friends_valid_to": {
+        "name": "Gültig bis"
+      },
+      "last_update": {
+        "name": "Letzte Aktualisierung"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey-ID"
+      },
+      "opening_timeout": {
+        "name": "Öffnungs-Timeout"
+      },
+      "signal_quality": {
+        "name": "Signalqualität",
+        "state": {
+          "none": "Kein Signal",
+          "weak": "Schwach",
+          "good": "Gut",
+          "excellent": "Ausgezeichnet"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Authentifizierung für das MobileKey-Konto {username} fehlgeschlagen."
+    },
+    "cannot_connect": {
+      "message": "Der MobileKey-Clouddienst konnte nicht erreicht werden: {error}"
+    },
+    "custom_name_not_authorized": {
+      "message": "Ein Gast-Schlossname bezieht sich auf {device}, das nicht zu den autorisierten Schlössern des Schlüssels gehört."
+    },
+    "device_not_found": {
+      "message": "Gerät {device_id} ist kein Gerät eines MobileKey-Kontos."
+    },
+    "entry_not_found": {
+      "message": "Das ausgewählte MobileKey-Konto ist nicht konfiguriert."
+    },
+    "entry_not_loaded": {
+      "message": "Das MobileKey-Konto {title} ist derzeit nicht geladen."
+    },
+    "incomplete_validity_window": {
+      "message": "Sowohl der Beginn als auch das Ende des Gültigkeitszeitraums sind erforderlich."
+    },
+    "invalid_validity_window": {
+      "message": "Das Ende des Gültigkeitszeitraums muss nach seinem Beginn liegen."
+    },
+    "key4friends_delete_failed": {
+      "message": "Der Key4Friends-Schlüssel {name} konnte nicht aus der MobileKey-Cloud gelöscht werden."
+    },
+    "key4friends_not_found": {
+      "message": "Gerät {device} ist kein vorhandener Key4Friends-Schlüssel."
+    },
+    "key4friends_save_failed": {
+      "message": "Der Key4Friends-Schlüssel {name} konnte nicht in der MobileKey-Cloud gespeichert werden."
+    },
+    "lock_command_failed": {
+      "message": "Der Befehl konnte nicht an das Schloss {name} gesendet werden."
+    },
+    "not_a_lock": {
+      "message": "Gerät {device} ist kein Schloss des angesteuerten MobileKey-Kontos."
+    }
+  }
+}

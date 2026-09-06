@@ -1,0 +1,374 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Opret forbindelse til MobileKey",
+        "description": "Log ind med din SimonsVoss MobileKey-konto.",
+        "data": {
+          "username": "Brugernavn",
+          "password": "Adgangskode",
+          "scan_interval": "Pollinginterval"
+        },
+        "data_description": {
+          "username": "E-mailadressen for din MobileKey-konto.",
+          "password": "Adgangskoden til din MobileKey-konto.",
+          "scan_interval": "Hvor ofte systemstatus hentes fra MobileKey-skyen, i sekunder."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Godkend MobileKey igen",
+        "description": "Adgangskoden til {username} er ikke længere gyldig. Indtast den aktuelle adgangskode.",
+        "data": {
+          "password": "Adgangskode"
+        },
+        "data_description": {
+          "password": "Adgangskoden til din MobileKey-konto."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke oprette forbindelse",
+      "invalid_auth": "Ugyldig godkendelse",
+      "unknown": "Uventet fejl"
+    },
+    "abort": {
+      "already_configured": "Kontoen er allerede konfigureret",
+      "reauth_successful": "Gengodkendelse lykkedes"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MobileKey-indstillinger",
+        "menu_options": {
+          "settings": "Konfigurer integrationen",
+          "create_key": "Opret en Key4Friends-nøgle",
+          "edit_key": "Rediger en Key4Friends-nøgle"
+        }
+      },
+      "settings": {
+        "title": "MobileKey-indstillinger",
+        "data": {
+          "scan_interval": "Pollinginterval",
+          "user_agent": "User agent"
+        },
+        "data_description": {
+          "scan_interval": "Hvor ofte låsesystemets status hentes fra MobileKey-skyen, i sekunder.",
+          "user_agent": "HTTP User-Agent-header, der sendes med hver anmodning til MobileKey-skyen. Skift den kun, hvis skyen stopper med at acceptere standardværdien."
+        }
+      },
+      "create_key": {
+        "title": "Opret en Key4Friends-nøgle",
+        "description": "Inviter en gæst via e-mail. Gæsten betjener de autoriserede låse med SimonsVoss Key4Friends-appen.",
+        "data": {
+          "name": "Navn",
+          "email": "E-mail",
+          "language": "Gæstens sprog",
+          "valid_from": "Gyldig fra",
+          "valid_to": "Gyldig til",
+          "authorized_locks": "Autoriserede låse"
+        },
+        "data_description": {
+          "name": "Venligt navn for den virtuelle nøgle.",
+          "email": "E-mailadresse, som invitationen sendes til. Den kan ikke ændres senere.",
+          "language": "Sprog for invitationen og for Key4Friends-appen.",
+          "valid_from": "Start på gyldighedsperioden, i Home Assistants tidszone.",
+          "valid_to": "Slut på gyldighedsperioden, i Home Assistants tidszone.",
+          "authorized_locks": "Låse, som gæsten må betjene. Navnene, der vises for gæsten, gennemgås i næste trin."
+        }
+      },
+      "edit_key": {
+        "title": "Rediger en Key4Friends-nøgle",
+        "data": {
+          "key": "Nøgle"
+        },
+        "data_description": {
+          "key": "Den virtuelle nøgle, der skal redigeres."
+        }
+      },
+      "edit_key_settings": {
+        "title": "Rediger en Key4Friends-nøgle",
+        "description": "Opdater den virtuelle nøgle {name} ({email}). E-mailadressen kan ikke ændres.",
+        "data": {
+          "name": "Navn",
+          "language": "Gæstens sprog",
+          "valid_from": "Gyldig fra",
+          "valid_to": "Gyldig til",
+          "authorized_locks": "Autoriserede låse"
+        },
+        "data_description": {
+          "name": "Venligt navn for den virtuelle nøgle.",
+          "language": "Sprog for invitationen og for Key4Friends-appen.",
+          "valid_from": "Start på gyldighedsperioden, i Home Assistants tidszone.",
+          "valid_to": "Slut på gyldighedsperioden, i Home Assistants tidszone.",
+          "authorized_locks": "Låse, som gæsten må betjene."
+        }
+      },
+      "guest_lock_names": {
+        "title": "Låsenavne til gæsten",
+        "description": "Gæsten, der bruger {name}, ser disse navne i Key4Friends-appen. Hvert felt er mærket med systemnavnet på den tilsvarende lås; lad et felt stå tomt for at vise systemnavnet."
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke oprette forbindelse",
+      "invalid_auth": "Ugyldig godkendelse",
+      "invalid_datetime": "Angiv en gyldig dato og et gyldigt klokkeslæt",
+      "invalid_user_agent": "User agent må kun indeholde udskrivbare ASCII-tegn",
+      "invalid_validity_window": "Slutningen af gyldighedsperioden skal være efter dens start"
+    },
+    "abort": {
+      "not_loaded": "Integrationen skal være indlæst for at kunne administrere Key4Friends-nøgler",
+      "key_not_found": "Den valgte Key4Friends-nøgle findes ikke længere"
+    }
+  },
+  "selector": {
+    "key4friends_language": {
+      "options": {
+        "en": "Engelsk",
+        "de": "Tysk",
+        "fr": "Fransk",
+        "it": "Italiensk",
+        "nl": "Hollandsk",
+        "sv": "Svensk",
+        "da": "Dansk"
+      }
+    }
+  },
+  "services": {
+    "key4friends_create": {
+      "name": "Opret en Key4Friends-nøgle",
+      "description": "Opretter en Key4Friends-gæstenøgle og sender invitationen til gæsten via e-mail.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-konto",
+          "description": "Den MobileKey-konto, nøglen oprettes i."
+        },
+        "name": {
+          "name": "Navn",
+          "description": "Venligt navn for den virtuelle nøgle."
+        },
+        "email": {
+          "name": "E-mail",
+          "description": "E-mailadresse, som invitationen sendes til. Den kan ikke ændres senere."
+        },
+        "language": {
+          "name": "Gæstens sprog",
+          "description": "Sprog for invitationen og for Key4Friends-appen."
+        },
+        "valid_from": {
+          "name": "Gyldig fra",
+          "description": "Start på gyldighedsperioden, i Home Assistants tidszone."
+        },
+        "valid_to": {
+          "name": "Gyldig til",
+          "description": "Slut på gyldighedsperioden, i Home Assistants tidszone."
+        },
+        "locks": {
+          "name": "Autoriserede låse",
+          "description": "Låse, som gæsten må betjene."
+        },
+        "lock_names": {
+          "name": "Låsenavne til gæsten",
+          "description": "Navne, der vises for gæsten i stedet for låsenes systemnavne. Angiv én post pr. lås, der skal omdøbes, med lås-enhedens enheds-ID som nøgle og navnet, der skal vises, som værdi. Omdøbte låse skal være blandt de autoriserede låse; låse uden en post viser deres systemnavn."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Slet en Key4Friends-nøgle",
+      "description": "Sletter en Key4Friends-gæstenøgle. Gæsten underrettes og mister øjeblikkeligt adgangen.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nøgle",
+          "description": "Den Key4Friends-nøgle, der skal slettes."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Hent en Key4Friends-nøgle",
+      "description": "Returnerer oplysningerne for en Key4Friends-gæstenøgle, inklusive dens låseautorisationer.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nøgle",
+          "description": "Den Key4Friends-nøgle, der skal slås op."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Vis Key4Friends-nøgler",
+      "description": "Returnerer alle Key4Friends-gæstenøgler for en MobileKey-konto.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey-konto",
+          "description": "Den MobileKey-konto, hvis nøgler vises."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Opdater en Key4Friends-nøgle",
+      "description": "Opdaterer en Key4Friends-gæstenøgle og underretter gæsten. Udeladte felter forbliver uændrede; e-mailadressen kan ikke ændres.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends-nøgle",
+          "description": "Den Key4Friends-nøgle, der skal opdateres."
+        },
+        "name": {
+          "name": "Navn",
+          "description": "Venligt navn for den virtuelle nøgle."
+        },
+        "language": {
+          "name": "Gæstens sprog",
+          "description": "Sprog for invitationen og for Key4Friends-appen."
+        },
+        "valid_from": {
+          "name": "Gyldig fra",
+          "description": "Start på gyldighedsperioden, i Home Assistants tidszone."
+        },
+        "valid_to": {
+          "name": "Gyldig til",
+          "description": "Slut på gyldighedsperioden, i Home Assistants tidszone."
+        },
+        "locks": {
+          "name": "Autoriserede låse",
+          "description": "Låse, som gæsten må betjene. Erstatter de nuværende autorisationer."
+        },
+        "lock_names": {
+          "name": "Låsenavne til gæsten",
+          "description": "Navne, der vises for gæsten i stedet for låsenes systemnavne. Angiv én post pr. lås, der skal omdøbes, med lås-enhedens enheds-ID som nøgle og navnet, der skal vises, som værdi. Omdøbte låse skal være blandt de autoriserede låse; låse uden en post bevarer deres nuværende gæstevisning navn, og nyligt autoriserede låse bruger som standard deres systemnavn."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "expired": {
+        "name": "Udløbet"
+      },
+      "last_api_call_successful": {
+        "name": "Sidste API-kald lykkedes"
+      },
+      "pending_task": {
+        "name": "Afventende programmeringsopgave"
+      },
+      "permanent_opening": {
+        "name": "Permanent åbning"
+      }
+    },
+    "button": {
+      "open": {
+        "name": "Åbn"
+      },
+      "read_audit_trail": {
+        "name": "Læs adgangsliste"
+      },
+      "refresh": {
+        "name": "Opdater"
+      }
+    },
+    "sensor": {
+      "door_open_alert_delay": {
+        "name": "Forsinkelse for advarsel om åben dør"
+      },
+      "ident_medium_authorizations": {
+        "name": "Autoriserede låse"
+      },
+      "ident_medium_id": {
+        "name": "ID"
+      },
+      "ident_medium_name": {
+        "name": "Navn"
+      },
+      "key4friends_authorizations": {
+        "name": "Autoriserede låse"
+      },
+      "key4friends_email": {
+        "name": "E-mail"
+      },
+      "key4friends_id": {
+        "name": "ID"
+      },
+      "key4friends_language": {
+        "name": "Gæstens sprog",
+        "state": {
+          "en": "Engelsk",
+          "de": "Tysk",
+          "fr": "Fransk",
+          "it": "Italiensk",
+          "nl": "Hollandsk",
+          "sv": "Svensk",
+          "da": "Dansk"
+        }
+      },
+      "key4friends_name": {
+        "name": "Navn"
+      },
+      "key4friends_valid_from": {
+        "name": "Gyldig fra"
+      },
+      "key4friends_valid_to": {
+        "name": "Gyldig til"
+      },
+      "last_update": {
+        "name": "Sidste opdatering"
+      },
+      "lock_id": {
+        "name": "ID"
+      },
+      "mobile_key_id": {
+        "name": "MobileKey-ID"
+      },
+      "opening_timeout": {
+        "name": "Åbningstimeout"
+      },
+      "signal_quality": {
+        "name": "Signalkvalitet",
+        "state": {
+          "none": "Intet signal",
+          "weak": "Svag",
+          "good": "God",
+          "excellent": "Fremragende"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Godkendelse mislykkedes for MobileKey-kontoen {username}."
+    },
+    "cannot_connect": {
+      "message": "Kunne ikke nå MobileKey-skytjenesten: {error}"
+    },
+    "custom_name_not_authorized": {
+      "message": "Et låsenavn for gæsten refererer til {device}, som ikke er blandt nøglens autoriserede låse."
+    },
+    "device_not_found": {
+      "message": "Enheden {device_id} er ikke en enhed på en MobileKey-konto."
+    },
+    "entry_not_found": {
+      "message": "Den valgte MobileKey-konto er ikke konfigureret."
+    },
+    "entry_not_loaded": {
+      "message": "MobileKey-kontoen {title} er i øjeblikket ikke indlæst."
+    },
+    "incomplete_validity_window": {
+      "message": "Både start og slutning af gyldighedsperioden er påkrævet."
+    },
+    "invalid_validity_window": {
+      "message": "Slutningen af gyldighedsperioden skal være efter dens start."
+    },
+    "key4friends_delete_failed": {
+      "message": "Kunne ikke slette Key4Friends-nøglen {name} fra MobileKey-skyen."
+    },
+    "key4friends_not_found": {
+      "message": "Enheden {device} er ikke en eksisterende Key4Friends-nøgle."
+    },
+    "key4friends_save_failed": {
+      "message": "Kunne ikke gemme Key4Friends-nøglen {name} i MobileKey-skyen."
+    },
+    "lock_command_failed": {
+      "message": "Kunne ikke sende kommandoen til låsen {name}."
+    },
+    "not_a_lock": {
+      "message": "Enheden {device} er ikke en lås på den valgte MobileKey-konto."
+    }
+  }
+}
