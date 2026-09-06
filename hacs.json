@@ -1,4 +1,7 @@
 {
     "name": "SimonsVoss MobileKey",
-    "render_readme": true
+    "homeassistant": "2024.1.0",
+    "zip_release": true,
+    "render_readme": true,
+    "filename": "simonsvoss_mobilekey.zip"
 }
