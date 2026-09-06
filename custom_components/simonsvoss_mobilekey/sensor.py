@@ -90,6 +90,51 @@ def _as_local_timestamp(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=dt_util.get_default_time_zone())
 
 
+def _ident_medium_lock_attributes(
+    medium: MobileKeyIdentMedium, system: MobileKeyLockingSystem
+) -> dict[str, Any]:
+    """Return the locks the ident medium is granted access to.
+
+    Each entry reports both the lock ID and its system name, so entries
+    stay unambiguous even when locks share a name.
+    """
+    return {
+        "authorized_locks": [
+            {"id": lock.id, "name": lock.name}
+            for lock in sorted(
+                system.authorized_locks(medium.id), key=lambda lock: lock.id
+            )
+        ]
+    }
+
+
+def _key4friends_lock_attributes(
+    key: MobileKeyKey4Friends, system: MobileKeyLockingSystem
+) -> dict[str, Any]:
+    """Return the lock authorizations carried by the key.
+
+    Each entry reports the lock ID and system name along with the
+    possibly different name shown to the guest. The system name is None
+    when the lock is no longer part of the locking system.
+    """
+    return {
+        "authorized_locks": [
+            {
+                "id": authorization.lock_id,
+                "name": (
+                    None
+                    if (lock := system.locks.get(authorization.lock_id)) is None
+                    else lock.name
+                ),
+                "custom_name": authorization.name,
+            }
+            for authorization in sorted(
+                key.authorizations, key=lambda authorization: authorization.lock_id
+            )
+        ]
+    }
+
+
 @dataclass(frozen=True, kw_only=True)
 class MobileKeyLockSensorDescription(SensorEntityDescription):
     """Describes a sensor attached to a MobileKey lock."""
@@ -121,10 +166,16 @@ class MobileKeyIdentMediumSensorDescription(SensorEntityDescription):
 
 @dataclass(frozen=True, kw_only=True)
 class MobileKeyKey4FriendsSensorDescription(SensorEntityDescription):
-    """Describes a sensor attached to a MobileKey Key4Friends key."""
+    """Describes a sensor attached to a MobileKey Key4Friends key.
+
+    Attribute functions also receive the full system state, which maps
+    authorized locks back to their system names.
+    """
 
     value_fn: Callable[[MobileKeyKey4Friends], StateType | datetime]
-    attributes_fn: Callable[[MobileKeyKey4Friends], dict[str, Any]] | None = None
+    attributes_fn: (
+        Callable[[MobileKeyKey4Friends, MobileKeyLockingSystem], dict[str, Any]] | None
+    ) = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -210,11 +261,7 @@ DESCRIPTIONS_IDENT_MEDIUM: tuple[MobileKeyIdentMediumSensorDescription, ...] = (
         key="authorizations",
         translation_key="ident_medium_authorizations",
         value_fn=lambda medium, system: len(system.authorized_locks(medium.id)),
-        attributes_fn=lambda medium, system: {
-            "authorized_locks": sorted(
-                lock.name for lock in system.authorized_locks(medium.id)
-            )
-        },
+        attributes_fn=_ident_medium_lock_attributes,
     ),
 )
 
@@ -261,11 +308,7 @@ DESCRIPTIONS_KEY4FRIENDS: tuple[MobileKeyKey4FriendsSensorDescription, ...] = (
         key="authorizations",
         translation_key="key4friends_authorizations",
         value_fn=lambda key: len(key.authorizations),
-        attributes_fn=lambda key: {
-            "authorized_locks": sorted(
-                authorization.name for authorization in key.authorizations
-            )
-        },
+        attributes_fn=_key4friends_lock_attributes,
     ),
 )
 
@@ -392,7 +435,7 @@ class MobileKeyKey4FriendsSensor(MobileKeyKey4FriendsEntity, SensorEntity):
         """Return additional attributes describing the key."""
         if (attributes_fn := self.entity_description.attributes_fn) is None:
             return None
-        return attributes_fn(self.key4friends)
+        return attributes_fn(self.key4friends, self.coordinator.data)
 
 
 class MobileKeySystemSensor(MobileKeySystemEntity, SensorEntity):

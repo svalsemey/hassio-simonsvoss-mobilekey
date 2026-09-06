@@ -72,7 +72,7 @@
           "language": "Language of the invitation and of the Key4Friends application.",
           "valid_from": "Start of the validity period, in the Home Assistant time zone.",
           "valid_to": "End of the validity period, in the Home Assistant time zone.",
-          "authorized_locks": "Locks the guest is allowed to operate."
+          "authorized_locks": "Locks the guest is allowed to operate. The names shown to the guest are reviewed in the next step."
         }
       },
       "edit_key": {
@@ -101,6 +101,10 @@
           "valid_to": "End of the validity period, in the Home Assistant time zone.",
           "authorized_locks": "Locks the guest is allowed to operate."
         }
+      },
+      "guest_lock_names": {
+        "title": "Lock names for the guest",
+        "description": "The guest using {name} sees these names in the Key4Friends application. Each field is labeled with the system name of the corresponding lock; leave a field empty to show the system name."
       }
     },
     "error": {

@@ -72,7 +72,7 @@
           "language": "Langue de l’invitation et de l’application Key4Friends.",
           "valid_from": "Début de la période de validité, dans le fuseau horaire de Home Assistant.",
           "valid_to": "Fin de la période de validité, dans le fuseau horaire de Home Assistant.",
-          "authorized_locks": "Serrures que l’invité est autorisé à utiliser."
+          "authorized_locks": "Serrures que l’invité est autorisé à utiliser. Les noms affichés à l’invité sont examinés à l’étape suivante."
         }
       },
       "edit_key": {
@@ -101,6 +101,10 @@
           "valid_to": "Fin de la période de validité, dans le fuseau horaire de Home Assistant.",
           "authorized_locks": "Serrures que l’invité est autorisé à utiliser."
         }
+      },
+      "guest_lock_names": {
+        "title": "Noms des serrures pour l’invité",
+        "description": "L’invité utilisant {name} voit ces noms dans l’application Key4Friends. Chaque champ est étiqueté avec le nom système de la serrure correspondante ; laissez un champ vide pour afficher le nom système."
       }
     },
     "error": {

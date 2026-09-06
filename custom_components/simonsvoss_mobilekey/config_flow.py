@@ -1,6 +1,7 @@
 """Config flow for the MobileKey integration."""
 
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import datetime, timedelta
 import logging
 from typing import Any, Final
@@ -135,6 +136,7 @@ class MobileKeyOptionsFlow(OptionsFlow):
     """Handle the options flow for MobileKey."""
 
     _key_id: int | None = None
+    _draft: MobileKeyKey4Friends | None = None
 
     @property
     def _coordinator(self) -> MobileKeyCoordinator:
@@ -188,8 +190,9 @@ class MobileKeyOptionsFlow(OptionsFlow):
 
         Returns the key and no errors, or None and the per-field errors
         when a validity bound is unparsable or the window is inverted or
-        empty. When editing, the e-mail address, raw state and
-        authorization notes of the existing key are preserved.
+        empty. When editing, the e-mail address and raw state of the key
+        are preserved, and so are its existing authorizations, including
+        their guest-facing names and notes.
         """
         valid_from = _parse_local_naive(user_input[CONF_VALID_FROM])
         valid_to = _parse_local_naive(user_input[CONF_VALID_TO])
@@ -215,11 +218,6 @@ class MobileKeyOptionsFlow(OptionsFlow):
                 for authorization in key.authorizations
             }
         )
-        lock_names |= {
-            lock_id: authorization.name
-            for lock_id, authorization in existing.items()
-            if lock_id not in lock_names
-        }
         return (
             MobileKeyKey4Friends(
                 id=0 if key is None else key.id,
@@ -230,16 +228,72 @@ class MobileKeyOptionsFlow(OptionsFlow):
                 valid_to=valid_to,
                 state=0 if key is None else key.state,
                 authorizations=tuple(
-                    MobileKeyKey4FriendsAuthorization(
-                        lock_id=int(lock_id),
-                        name=lock_names[lock_id],
-                        notes=existing[lock_id].notes if lock_id in existing else "",
+                    existing.get(lock_id)
+                    or MobileKeyKey4FriendsAuthorization(
+                        lock_id=int(lock_id), name=lock_names[lock_id]
                     )
                     for lock_id in user_input[CONF_AUTHORIZED_LOCKS]
                 ),
             ),
             {},
         )
+
+    def _lock_system_name(
+        self, authorization: MobileKeyKey4FriendsAuthorization
+    ) -> str:
+        """Return the system name of the authorized lock.
+
+        Falls back to the guest-facing name carried by the authorization
+        when the lock is no longer part of the locking system.
+        """
+        return (
+            authorization.name
+            if (lock := self._coordinator.data.locks.get(authorization.lock_id))
+            is None
+            else lock.name
+        )
+
+    def _custom_name_fields(
+        self, draft: MobileKeyKey4Friends
+    ) -> dict[str, MobileKeyKey4FriendsAuthorization]:
+        """Map one form field per authorized lock of the draft key.
+
+        Lock names are user data and need no translation, so each field
+        is keyed, and therefore labeled, by the system name of its lock.
+        A name colliding with a previous field is suffixed with the lock
+        ID until unique, so no authorization is ever folded into another.
+        """
+        fields: dict[str, MobileKeyKey4FriendsAuthorization] = {}
+        for authorization in draft.authorizations:
+            label = self._lock_system_name(authorization)
+            while label in fields:
+                label = f"{label} (#{authorization.lock_id})"
+            fields[label] = authorization
+        return fields
+
+    async def _async_save_key(self, draft: MobileKeyKey4Friends) -> dict[str, str]:
+        """Send the draft key to the cloud and merge the result locally.
+
+        Creation and edition are told apart by the edited key ID kept on
+        the flow. Returns the form errors to display, empty on success.
+        """
+        client = self._coordinator.client
+        try:
+            if self._key_id is None:
+                draft = await client.async_create_key4friends(draft)
+            else:
+                await client.async_update_key4friends(draft)
+        except MobileKeyAuthenticationError:
+            return {"base": "invalid_auth"}
+        except MobileKeyError:
+            return {"base": "cannot_connect"}
+        self._coordinator.async_upsert_key4friends(draft)
+        return {}
+
+    @callback
+    def _async_finish(self) -> ConfigFlowResult:
+        """Conclude a key management action, leaving the options unchanged."""
+        return self.async_create_entry(data=dict(self.config_entry.options))
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -274,24 +328,23 @@ class MobileKeyOptionsFlow(OptionsFlow):
     async def async_step_create_key(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Create a new Key4Friends key."""
+        """Collect the properties of a new Key4Friends key.
+
+        The key is sent to the cloud once the guest-facing lock names
+        have been reviewed in the next step; a key without any
+        authorized lock is sent directly.
+        """
         if self.config_entry.state is not ConfigEntryState.LOADED:
             return self.async_abort(reason="not_loaded")
         errors: dict[str, str] = {}
         if user_input is not None:
             draft, errors = self._key4friends_from_input(user_input, None)
             if draft is not None:
-                try:
-                    created = await self._coordinator.client.async_create_key4friends(
-                        draft
-                    )
-                except MobileKeyAuthenticationError:
-                    errors["base"] = "invalid_auth"
-                except MobileKeyError:
-                    errors["base"] = "cannot_connect"
-                else:
-                    self._coordinator.async_upsert_key4friends(created)
-                    return self.async_create_entry(data=dict(self.config_entry.options))
+                self._draft = draft
+                if draft.authorizations:
+                    return await self.async_step_guest_lock_names()
+                if not (errors := await self._async_save_key(draft)):
+                    return self._async_finish()
         # Redisplay the submitted values on error; suggest defaults otherwise.
         suggested_values = user_input
         if suggested_values is None:
@@ -362,15 +415,11 @@ class MobileKeyOptionsFlow(OptionsFlow):
         if user_input is not None:
             updated, errors = self._key4friends_from_input(user_input, key)
             if updated is not None:
-                try:
-                    await self._coordinator.client.async_update_key4friends(updated)
-                except MobileKeyAuthenticationError:
-                    errors["base"] = "invalid_auth"
-                except MobileKeyError:
-                    errors["base"] = "cannot_connect"
-                else:
-                    self._coordinator.async_upsert_key4friends(updated)
-                    return self.async_create_entry(data=dict(self.config_entry.options))
+                self._draft = updated
+                if updated.authorizations:
+                    return await self.async_step_guest_lock_names()
+                if not (errors := await self._async_save_key(updated)):
+                    return self._async_finish()
         # Redisplay the submitted values on error; suggest the stored key otherwise.
         suggested_values = user_input
         if suggested_values is None:
@@ -391,6 +440,48 @@ class MobileKeyOptionsFlow(OptionsFlow):
                 self._key4friends_schema(key), suggested_values
             ),
             description_placeholders={"name": key.name, "email": key.email or "-"},
+            errors=errors,
+        )
+
+    async def async_step_guest_lock_names(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Review the lock names shown to the guest, then save the key.
+
+        One optional text field is offered per authorized lock, labeled
+        with the system name of the lock and suggesting the name
+        currently shown to the guest; an empty field falls back to the
+        system name.
+        """
+        if self.config_entry.state is not ConfigEntryState.LOADED:
+            return self.async_abort(reason="not_loaded")
+        if (draft := self._draft) is None:
+            return self.async_abort(reason="key_not_found")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            self._draft = draft = replace(
+                draft,
+                authorizations=tuple(
+                    replace(
+                        authorization,
+                        name=(
+                            (user_input.get(field) or "").strip()
+                            or self._lock_system_name(authorization)
+                        ),
+                    )
+                    for field, authorization in self._custom_name_fields(draft).items()
+                ),
+            )
+            if not (errors := await self._async_save_key(draft)):
+                return self._async_finish()
+        fields = self._custom_name_fields(draft)
+        return self.async_show_form(
+            step_id="guest_lock_names",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema({vol.Optional(field): TextSelector() for field in fields}),
+                {field: authorization.name for field, authorization in fields.items()},
+            ),
+            description_placeholders={"name": draft.name},
             errors=errors,
         )
 
