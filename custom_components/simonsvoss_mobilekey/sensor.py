@@ -14,7 +14,6 @@ from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.util import dt as dt_util
 
 from .const import KEY4FRIENDS_LANGUAGES
 from .coordinator import (
@@ -40,6 +39,7 @@ from .models import (
     MobileKeySignalQuality,
     MobileKeySmartBridge,
 )
+from .util import as_local_timestamp, key4friends_lock_summary
 
 # All states come from the coordinator, no per-entity update is performed.
 PARALLEL_UPDATES = 0
@@ -78,18 +78,6 @@ def _last_update(system: MobileKeyLockingSystem) -> datetime | None:
     return system.version.replace(tzinfo=UTC)
 
 
-def _as_local_timestamp(value: datetime | None) -> datetime | None:
-    """Attach the Home Assistant time zone to a naive local timestamp.
-
-    Key4Friends validity bounds are naive timestamps expressed in local
-    time; attaching the configured time zone declares them without
-    shifting the value.
-    """
-    if value is None:
-        return None
-    return value.replace(tzinfo=dt_util.get_default_time_zone())
-
-
 def _ident_medium_lock_attributes(
     medium: MobileKeyIdentMedium, system: MobileKeyLockingSystem
 ) -> dict[str, Any]:
@@ -111,28 +99,8 @@ def _ident_medium_lock_attributes(
 def _key4friends_lock_attributes(
     key: MobileKeyKey4Friends, system: MobileKeyLockingSystem
 ) -> dict[str, Any]:
-    """Return the lock authorizations carried by the key.
-
-    Each entry reports the lock ID and system name along with the
-    possibly different name shown to the guest. The system name is None
-    when the lock is no longer part of the locking system.
-    """
-    return {
-        "authorized_locks": [
-            {
-                "id": authorization.lock_id,
-                "name": (
-                    None
-                    if (lock := system.locks.get(authorization.lock_id)) is None
-                    else lock.name
-                ),
-                "custom_name": authorization.name,
-            }
-            for authorization in sorted(
-                key.authorizations, key=lambda authorization: authorization.lock_id
-            )
-        ]
-    }
+    """Return the lock authorizations carried by the key."""
+    return {"authorized_locks": key4friends_lock_summary(key, system)}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -298,13 +266,13 @@ DESCRIPTIONS_KEY4FRIENDS: tuple[MobileKeyKey4FriendsSensorDescription, ...] = (
         key="valid_from",
         translation_key="key4friends_valid_from",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda key: _as_local_timestamp(key.valid_from),
+        value_fn=lambda key: as_local_timestamp(key.valid_from),
     ),
     MobileKeyKey4FriendsSensorDescription(
         key="valid_to",
         translation_key="key4friends_valid_to",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda key: _as_local_timestamp(key.valid_to),
+        value_fn=lambda key: as_local_timestamp(key.valid_to),
     ),
     MobileKeyKey4FriendsSensorDescription(
         key="authorizations",

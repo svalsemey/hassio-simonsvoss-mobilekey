@@ -40,3 +40,17 @@ SCANINTERVAL_MAX: Final = 3600
 # Guest languages supported by Key4Friends invitations, as accepted by
 # the cloud service.
 KEY4FRIENDS_LANGUAGES: Final = ("en", "de", "fr", "it", "nl", "sv", "da")
+
+## Service actions
+SERVICE_KEY4FRIENDS_CREATE: Final = "key4friends_create"
+SERVICE_KEY4FRIENDS_DELETE: Final = "key4friends_delete"
+SERVICE_KEY4FRIENDS_GET: Final = "key4friends_get"
+SERVICE_KEY4FRIENDS_LIST: Final = "key4friends_list"
+SERVICE_KEY4FRIENDS_UPDATE: Final = "key4friends_update"
+
+## Field names shared by the service actions and the options flow.
+ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
+ATTR_LOCKS: Final = "locks"
+ATTR_LOCK_NAMES: Final = "lock_names"
+ATTR_VALID_FROM: Final = "valid_from"
+ATTR_VALID_TO: Final = "valid_to"

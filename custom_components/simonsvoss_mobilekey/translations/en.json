@@ -134,6 +134,110 @@
       }
     }
   },
+  "services": {
+    "key4friends_create": {
+      "name": "Create a Key4Friends key",
+      "description": "Creates a Key4Friends guest key and emails the invitation to the guest.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey account",
+          "description": "The MobileKey account the key is created in."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Friendly name of the virtual key."
+        },
+        "email": {
+          "name": "Email",
+          "description": "Email address the invitation is sent to. It cannot be changed later."
+        },
+        "language": {
+          "name": "Guest language",
+          "description": "Language of the invitation and of the Key4Friends application."
+        },
+        "valid_from": {
+          "name": "Valid from",
+          "description": "Start of the validity period, in the Home Assistant time zone."
+        },
+        "valid_to": {
+          "name": "Valid until",
+          "description": "End of the validity period, in the Home Assistant time zone."
+        },
+        "locks": {
+          "name": "Authorized locks",
+          "description": "Locks the guest is allowed to operate."
+        },
+        "lock_names": {
+          "name": "Guest lock names",
+          "description": "Names shown to the guest instead of the system lock names. Provide one entry per lock to rename, with the device ID of the lock as the key and the name to show as the value. Renamed locks must be among the authorized locks; locks without an entry show their system name."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Delete a Key4Friends key",
+      "description": "Deletes a Key4Friends guest key. The guest is notified and immediately loses access.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends key",
+          "description": "The Key4Friends key to delete."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Get a Key4Friends key",
+      "description": "Returns the details of a Key4Friends guest key, including its lock authorizations.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends key",
+          "description": "The Key4Friends key to look up."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "List Key4Friends keys",
+      "description": "Returns every Key4Friends guest key of a MobileKey account.",
+      "fields": {
+        "config_entry_id": {
+          "name": "MobileKey account",
+          "description": "The MobileKey account whose keys are listed."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Update a Key4Friends key",
+      "description": "Updates a Key4Friends guest key and notifies the guest. Omitted fields are left unchanged; the email address cannot be changed.",
+      "fields": {
+        "device_id": {
+          "name": "Key4Friends key",
+          "description": "The Key4Friends key to update."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Friendly name of the virtual key."
+        },
+        "language": {
+          "name": "Guest language",
+          "description": "Language of the invitation and of the Key4Friends application."
+        },
+        "valid_from": {
+          "name": "Valid from",
+          "description": "Start of the validity period, in the Home Assistant time zone."
+        },
+        "valid_to": {
+          "name": "Valid until",
+          "description": "End of the validity period, in the Home Assistant time zone."
+        },
+        "locks": {
+          "name": "Authorized locks",
+          "description": "Locks the guest is allowed to operate. Replaces the current authorizations."
+        },
+        "lock_names": {
+          "name": "Guest lock names",
+          "description": "Names shown to the guest instead of the system lock names. Provide one entry per lock to rename, with the device ID of the lock as the key and the name to show as the value. Renamed locks must be among the authorized locks; locks without an entry keep their current guest-facing name, and newly authorized locks default to their system name."
+        }
+      }
+    }
+  },
   "entity": {
     "binary_sensor": {
       "expired": {
@@ -233,11 +337,38 @@
     "cannot_connect": {
       "message": "Could not reach the MobileKey cloud service: {error}"
     },
+    "custom_name_not_authorized": {
+      "message": "A guest lock name targets {device}, which is not among the authorized locks of the key."
+    },
+    "device_not_found": {
+      "message": "Device {device_id} is not a device of a MobileKey account."
+    },
+    "entry_not_found": {
+      "message": "The selected MobileKey account is not configured."
+    },
+    "entry_not_loaded": {
+      "message": "The MobileKey account {title} is currently not loaded."
+    },
+    "incomplete_validity_window": {
+      "message": "Both the start and the end of the validity period are required."
+    },
+    "invalid_validity_window": {
+      "message": "The end of the validity period must be after its start."
+    },
     "key4friends_delete_failed": {
       "message": "Could not delete the Key4Friends key {name} from the MobileKey cloud."
     },
+    "key4friends_not_found": {
+      "message": "Device {device} is not an existing Key4Friends key."
+    },
+    "key4friends_save_failed": {
+      "message": "Could not save the Key4Friends key {name} to the MobileKey cloud."
+    },
     "lock_command_failed": {
       "message": "Could not send the command to the lock {name}."
+    },
+    "not_a_lock": {
+      "message": "Device {device} is not a lock of the targeted MobileKey account."
     }
   }
 }

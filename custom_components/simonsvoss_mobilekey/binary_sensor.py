@@ -12,7 +12,6 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.util import dt as dt_util
 
 from .coordinator import (
     SLUG_KEY4FRIENDS,
@@ -35,6 +34,7 @@ from .models import (
     MobileKeyLockingSystem,
     MobileKeySmartBridge,
 )
+from .util import key4friends_expired
 
 # All states come from the coordinator, no per-entity update is performed.
 PARALLEL_UPDATES = 0
@@ -95,18 +95,6 @@ def _authorization_attributes(
             medium.name for medium in system.authorized_media(lock.id)
         )
     }
-
-
-def _key4friends_expired(key: MobileKeyKey4Friends) -> bool | None:
-    """Return whether the validity window of the key has ended.
-
-    Validity bounds are naive timestamps expressed in the Home Assistant
-    time zone, so the comparison uses the local wall-clock time. The
-    cloud keeps expired keys listed until their owner deletes them.
-    """
-    if key.valid_to is None:
-        return None
-    return dt_util.now().replace(tzinfo=None) > key.valid_to
 
 
 DESCRIPTIONS_SYSTEM: tuple[MobileKeySystemBinarySensorDescription, ...] = (
@@ -181,7 +169,7 @@ DESCRIPTIONS_KEY4FRIENDS: tuple[MobileKeyKey4FriendsBinarySensorDescription, ...
     MobileKeyKey4FriendsBinarySensorDescription(
         key="expired",
         translation_key="expired",
-        is_on_fn=_key4friends_expired,
+        is_on_fn=key4friends_expired,
     ),
 )
 

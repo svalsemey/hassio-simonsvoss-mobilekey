@@ -87,5 +87,12 @@
         }
       }
     }
+  },
+  "services": {
+    "key4friends_create": { "service": "mdi:key-plus" },
+    "key4friends_delete": { "service": "mdi:key-remove" },
+    "key4friends_get": { "service": "mdi:key-outline" },
+    "key4friends_list": { "service": "mdi:format-list-bulleted" },
+    "key4friends_update": { "service": "mdi:key-change" }
   }
 }

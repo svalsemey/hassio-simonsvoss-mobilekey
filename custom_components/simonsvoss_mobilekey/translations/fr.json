@@ -134,6 +134,110 @@
       }
     }
   },
+  "services": {
+    "key4friends_create": {
+      "name": "Créer une clé Key4Friends",
+      "description": "Crée une clé invitée Key4Friends et envoie l’invitation par e-mail à l’invité.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Compte MobileKey",
+          "description": "Le compte MobileKey dans lequel la clé est créée."
+        },
+        "name": {
+          "name": "Nom",
+          "description": "Nom convivial de la clé virtuelle."
+        },
+        "email": {
+          "name": "E-mail",
+          "description": "Adresse e-mail à laquelle l’invitation est envoyée. Elle ne peut pas être modifiée ultérieurement."
+        },
+        "language": {
+          "name": "Langue de l’invité",
+          "description": "Langue de l’invitation et de l’application Key4Friends."
+        },
+        "valid_from": {
+          "name": "Valide à partir de",
+          "description": "Début de la période de validité, dans le fuseau horaire de Home Assistant."
+        },
+        "valid_to": {
+          "name": "Valide jusqu’à",
+          "description": "Fin de la période de validité, dans le fuseau horaire de Home Assistant."
+        },
+        "locks": {
+          "name": "Serrures autorisées",
+          "description": "Serrures que l’invité est autorisé à utiliser."
+        },
+        "lock_names": {
+          "name": "Noms des serrures pour l’invité",
+          "description": "Noms affichés à l’invité au lieu des noms système des serrures. Fournissez une entrée par serrure à renommer, avec l’ID du dispositif de la serrure comme clé et le nom à afficher comme valeur. Les serrures renommées doivent figurer parmi les serrures autorisées ; les serrures sans entrée affichent leur nom système."
+        }
+      }
+    },
+    "key4friends_delete": {
+      "name": "Supprimer une clé Key4Friends",
+      "description": "Supprime une clé invitée Key4Friends. L’invité est notifié et perd immédiatement l’accès.",
+      "fields": {
+        "device_id": {
+          "name": "Clé Key4Friends",
+          "description": "La clé Key4Friends à supprimer."
+        }
+      }
+    },
+    "key4friends_get": {
+      "name": "Obtenir une clé Key4Friends",
+      "description": "Renvoie les détails d’une clé invitée Key4Friends, y compris ses autorisations de serrure.",
+      "fields": {
+        "device_id": {
+          "name": "Clé Key4Friends",
+          "description": "La clé Key4Friends à consulter."
+        }
+      }
+    },
+    "key4friends_list": {
+      "name": "Lister les clés Key4Friends",
+      "description": "Renvoie toutes les clés invitées Key4Friends d’un compte MobileKey.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Compte MobileKey",
+          "description": "Le compte MobileKey dont les clés sont listées."
+        }
+      }
+    },
+    "key4friends_update": {
+      "name": "Mettre à jour une clé Key4Friends",
+      "description": "Met à jour une clé invitée Key4Friends et notifie l’invité. Les champs omis restent inchangés ; l’adresse e-mail ne peut pas être modifiée.",
+      "fields": {
+        "device_id": {
+          "name": "Clé Key4Friends",
+          "description": "La clé Key4Friends à mettre à jour."
+        },
+        "name": {
+          "name": "Nom",
+          "description": "Nom convivial de la clé virtuelle."
+        },
+        "language": {
+          "name": "Langue de l’invité",
+          "description": "Langue de l’invitation et de l’application Key4Friends."
+        },
+        "valid_from": {
+          "name": "Valide à partir de",
+          "description": "Début de la période de validité, dans le fuseau horaire de Home Assistant."
+        },
+        "valid_to": {
+          "name": "Valide jusqu’à",
+          "description": "Fin de la période de validité, dans le fuseau horaire de Home Assistant."
+        },
+        "locks": {
+          "name": "Serrures autorisées",
+          "description": "Serrures que l’invité est autorisé à utiliser. Remplace les autorisations actuelles."
+        },
+        "lock_names": {
+          "name": "Noms des serrures pour l’invité",
+          "description": "Noms affichés à l’invité au lieu des noms système des serrures. Fournissez une entrée par serrure à renommer, avec l’ID du dispositif de la serrure comme clé et le nom à afficher comme valeur. Les serrures renommées doivent figurer parmi les serrures autorisées ; les serrures sans entrée conservent leur nom actuel visible par l’invité, et les nouvelles serrures autorisées utilisent leur nom système."
+        }
+      }
+    }
+  },
   "entity": {
     "binary_sensor": {
       "expired": {
@@ -233,11 +337,38 @@
     "cannot_connect": {
       "message": "Impossible de joindre le service cloud MobileKey : {error}"
     },
+    "custom_name_not_authorized": {
+      "message": "Un nom de serrure invité cible {device}, qui ne fait pas partie des serrures autorisées de la clé."
+    },
+    "device_not_found": {
+      "message": "Le dispositif {device_id} n’est pas un dispositif d’un compte MobileKey."
+    },
+    "entry_not_found": {
+      "message": "Le compte MobileKey sélectionné n’est pas configuré."
+    },
+    "entry_not_loaded": {
+      "message": "Le compte MobileKey {title} n’est actuellement pas chargé."
+    },
+    "incomplete_validity_window": {
+      "message": "Le début et la fin de la période de validité sont requis."
+    },
+    "invalid_validity_window": {
+      "message": "La fin de la période de validité doit être après son début."
+    },
     "key4friends_delete_failed": {
       "message": "Impossible de supprimer la clé Key4Friends {name} du cloud MobileKey."
     },
+    "key4friends_not_found": {
+      "message": "Le dispositif {device} n’est pas une clé Key4Friends existante."
+    },
+    "key4friends_save_failed": {
+      "message": "Impossible d’enregistrer la clé Key4Friends {name} dans le cloud MobileKey."
+    },
     "lock_command_failed": {
       "message": "Impossible d’envoyer la commande à la serrure {name}."
+    },
+    "not_a_lock": {
+      "message": "Le dispositif {device} n’est pas une serrure du compte MobileKey ciblé."
     }
   }
 }

@@ -8,7 +8,7 @@ from typing import Final
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -16,6 +16,7 @@ from .api import (
     MobileKeyApiClient,
     MobileKeyAuthenticationError,
     MobileKeyConnectionError,
+    MobileKeyError,
 )
 from .const import (
     CONF_USER_AGENT,
@@ -52,11 +53,16 @@ def entry_device_identifier(entry: MobileKeyConfigEntry, slug: str) -> tuple[str
     return (DOMAIN, f"{entry_unique_base(entry)}_{slug}")
 
 
-def key4friends_id_from_identifiers(
-    entry: MobileKeyConfigEntry, identifiers: set[tuple[str, str]]
+def device_item_id(
+    entry: MobileKeyConfigEntry, slug: str, identifiers: set[tuple[str, str]]
 ) -> int | None:
-    """Return the Key4Friends key ID encoded in device identifiers, if any."""
-    prefix = f"{entry_unique_base(entry)}_{SLUG_KEY4FRIENDS.format('')}"
+    """Return the item ID encoded in device identifiers for the given slug.
+
+    Device identifiers embed the numeric cloud ID of their item; the slug
+    template scopes the match to one item kind and the entry prefix to
+    one account. Returns None when no identifier matches.
+    """
+    prefix = f"{entry_unique_base(entry)}_{slug.format('')}"
     return next(
         (
             int(suffix)
@@ -163,6 +169,23 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
                 version=self.client.version or self.data.version,
             )
         )
+
+    async def async_delete_key4friends(self, key: MobileKeyKey4Friends) -> None:
+        """Delete a Key4Friends key from the cloud, then from the local data.
+
+        The cloud deletion must succeed before the local state changes,
+        so a failure leaves both sides consistent. The guest is notified
+        of the deletion by the cloud.
+        """
+        try:
+            await self.client.async_delete_key4friends(key.id)
+        except MobileKeyError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="key4friends_delete_failed",
+                translation_placeholders={"name": key.name},
+            ) from err
+        self.async_drop_key4friends(key.id)
 
     async def _async_update_data(self) -> MobileKeyLockingSystem:
         """Fetch the current locking system state from the cloud.

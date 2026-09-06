@@ -5,25 +5,39 @@ from functools import partial
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.typing import ConfigType
 
-from .api import MobileKeyApiClient, MobileKeyError
+from .api import MobileKeyApiClient
 from .const import DOMAIN
 from .coordinator import (
+    SLUG_KEY4FRIENDS,
     SLUG_SYSTEM,
     MobileKeyConfigEntry,
     MobileKeyCoordinator,
+    device_item_id,
     device_removed_signal,
     entry_device_identifier,
     entry_user_agent,
-    key4friends_id_from_identifiers,
 )
 from .devices import async_register_devices
+from .services import async_setup_services
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the MobileKey integration.
+
+    Service actions are registered here, once per Home Assistant run, so
+    they can be listed and validated even while no config entry is loaded.
+    """
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -> bool:
@@ -76,26 +90,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -
 async def _async_delete_key4friends(entry: MobileKeyConfigEntry, key_id: int) -> bool:
     """Delete the Key4Friends key backing a device the user removed.
 
-    Removing the device is the one way to delete a key: the cloud
-    deletion must succeed before the registry device disappears, so a
-    failure keeps both sides consistent. A key already gone from the
-    coordinator data has no cloud counterpart left, so its stale device
-    is simply released.
+    The cloud deletion must succeed before the registry device
+    disappears, so a failure keeps both sides consistent. A key already
+    gone from the coordinator data has no cloud counterpart left, so its
+    stale device is simply released.
     """
     if entry.state is not ConfigEntryState.LOADED:
         return False
     coordinator = entry.runtime_data
     if (key := coordinator.data.key4friends.get(key_id)) is None:
         return True
-    try:
-        await coordinator.client.async_delete_key4friends(key_id)
-    except MobileKeyError as err:
-        raise HomeAssistantError(
-            translation_domain=DOMAIN,
-            translation_key="key4friends_delete_failed",
-            translation_placeholders={"name": key.name},
-        ) from err
-    coordinator.async_drop_key4friends(key_id)
+    await coordinator.async_delete_key4friends(key)
     return True
 
 
@@ -106,16 +111,16 @@ async def async_remove_config_entry_device(
 
     The service device standing for the installation is the only one
     that must survive for the lifetime of the entry. Removing a
-    Key4Friends device deletes the key from the cloud, which is the
-    intended way to revoke a guest. Removing any other device is
-    accepted: the dispatcher signal lets entity platforms forget the
-    matching item, whose device and entities are recreated at the next
-    refresh as long as the cloud still reports it.
+    Key4Friends device deletes the key from the cloud, which is one way
+    to revoke a guest. Removing any other device is accepted: the
+    dispatcher signal lets entity platforms forget the matching item,
+    whose device and entities are recreated at the next refresh as long
+    as the cloud still reports it.
     """
     if entry_device_identifier(entry, SLUG_SYSTEM) in device_entry.identifiers:
         return False
     if (
-        key_id := key4friends_id_from_identifiers(entry, device_entry.identifiers)
+        key_id := device_item_id(entry, SLUG_KEY4FRIENDS, device_entry.identifiers)
     ) is not None:
         return await _async_delete_key4friends(entry, key_id)
     async_dispatcher_send(hass, device_removed_signal(entry), device_entry.identifiers)

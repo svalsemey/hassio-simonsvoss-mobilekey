@@ -48,6 +48,8 @@ from .api import (
     MobileKeyError,
 )
 from .const import (
+    ATTR_VALID_FROM,
+    ATTR_VALID_TO,
     CONF_USER_AGENT,
     DOMAIN,
     KEY4FRIENDS_LANGUAGES,
@@ -58,13 +60,12 @@ from .const import (
 )
 from .coordinator import MobileKeyCoordinator, entry_user_agent
 from .models import MobileKeyKey4Friends, MobileKeyKey4FriendsAuthorization
+from .util import as_local_naive, build_key4friends_authorizations
 
 _LOGGER = logging.getLogger(__name__)
 
 # Field names of the Key4Friends option-flow forms.
 CONF_KEY: Final = "key"
-CONF_VALID_FROM: Final = "valid_from"
-CONF_VALID_TO: Final = "valid_to"
 CONF_AUTHORIZED_LOCKS: Final = "authorized_locks"
 
 # Default validity offered for a new key: from now until this many days
@@ -121,13 +122,12 @@ def _parse_local_naive(value: str) -> datetime | None:
     """Parse a datetime form value into a naive local datetime.
 
     The cloud stores Key4Friends validity bounds as naive local
-    timestamps, mirroring what the mobile applications send. Datetime
-    selector values are naive local strings; aware values are converted
-    to local time first. Returns None when the value is unparsable.
+    timestamps, mirroring what the mobile applications send. Returns
+    None when the value is unparsable.
     """
-    if (parsed := dt_util.parse_datetime(value)) is None or parsed.tzinfo is None:
-        return parsed
-    return dt_util.as_local(parsed).replace(tzinfo=None)
+    if (parsed := dt_util.parse_datetime(value)) is None:
+        return None
+    return as_local_naive(parsed)
 
 
 def _form_datetime(value: datetime) -> str:
@@ -171,8 +171,8 @@ class MobileKeyOptionsFlow(OptionsFlow):
             schema[vol.Required(CONF_EMAIL)] = _EMAIL_SELECTOR
         schema |= {
             vol.Required(CONF_LANGUAGE): _LANGUAGE_SELECTOR,
-            vol.Required(CONF_VALID_FROM): DateTimeSelector(),
-            vol.Required(CONF_VALID_TO): DateTimeSelector(),
+            vol.Required(ATTR_VALID_FROM): DateTimeSelector(),
+            vol.Required(ATTR_VALID_TO): DateTimeSelector(),
             vol.Required(CONF_AUTHORIZED_LOCKS, default=list): SelectSelector(
                 SelectSelectorConfig(
                     options=[
@@ -197,27 +197,24 @@ class MobileKeyOptionsFlow(OptionsFlow):
         are preserved, and so are its existing authorizations, including
         their guest-facing names and notes.
         """
-        valid_from = _parse_local_naive(user_input[CONF_VALID_FROM])
-        valid_to = _parse_local_naive(user_input[CONF_VALID_TO])
+        valid_from = _parse_local_naive(user_input[ATTR_VALID_FROM])
+        valid_to = _parse_local_naive(user_input[ATTR_VALID_TO])
         if valid_from is None or valid_to is None:
             return None, {
                 field: "invalid_datetime"
                 for field, value in (
-                    (CONF_VALID_FROM, valid_from),
-                    (CONF_VALID_TO, valid_to),
+                    (ATTR_VALID_FROM, valid_from),
+                    (ATTR_VALID_TO, valid_to),
                 )
                 if value is None
             }
         if valid_to <= valid_from:
-            return None, {CONF_VALID_TO: "invalid_validity_window"}
-        lock_names = {
-            str(lock.id): lock.name for lock in self._coordinator.data.locks.values()
-        }
-        existing = (
+            return None, {ATTR_VALID_TO: "invalid_validity_window"}
+        existing: dict[int, MobileKeyKey4FriendsAuthorization] = (
             {}
             if key is None
             else {
-                str(authorization.lock_id): authorization
+                authorization.lock_id: authorization
                 for authorization in key.authorizations
             }
         )
@@ -230,12 +227,10 @@ class MobileKeyOptionsFlow(OptionsFlow):
                 valid_from=valid_from,
                 valid_to=valid_to,
                 state=0 if key is None else key.state,
-                authorizations=tuple(
-                    existing.get(lock_id)
-                    or MobileKeyKey4FriendsAuthorization(
-                        lock_id=int(lock_id), name=lock_names[lock_id]
-                    )
-                    for lock_id in user_input[CONF_AUTHORIZED_LOCKS]
+                authorizations=build_key4friends_authorizations(
+                    self._coordinator.data,
+                    (int(lock_id) for lock_id in user_input[CONF_AUTHORIZED_LOCKS]),
+                    existing,
                 ),
             ),
             {},
@@ -364,8 +359,8 @@ class MobileKeyOptionsFlow(OptionsFlow):
             now = dt_util.now().replace(tzinfo=None, microsecond=0)
             suggested_values = {
                 CONF_LANGUAGE: language if language in KEY4FRIENDS_LANGUAGES else "en",
-                CONF_VALID_FROM: _form_datetime(now),
-                CONF_VALID_TO: _form_datetime(
+                ATTR_VALID_FROM: _form_datetime(now),
+                ATTR_VALID_TO: _form_datetime(
                     (now + timedelta(days=_DEFAULT_VALIDITY_DAYS)).replace(
                         hour=23, minute=59, second=59
                     )
@@ -443,9 +438,9 @@ class MobileKeyOptionsFlow(OptionsFlow):
                 ],
             }
             if key.valid_from is not None:
-                suggested_values[CONF_VALID_FROM] = _form_datetime(key.valid_from)
+                suggested_values[ATTR_VALID_FROM] = _form_datetime(key.valid_from)
             if key.valid_to is not None:
-                suggested_values[CONF_VALID_TO] = _form_datetime(key.valid_to)
+                suggested_values[ATTR_VALID_TO] = _form_datetime(key.valid_to)
         return self.async_show_form(
             step_id="edit_key_settings",
             data_schema=self.add_suggested_values_to_schema(

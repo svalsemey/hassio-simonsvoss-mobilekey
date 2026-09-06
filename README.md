@@ -84,6 +84,45 @@ Guest keys let someone open selected locks with the free SimonsVoss
   are kept until you delete them, so this is a handy trigger for a cleanup
   reminder.
 
+### Actions
+
+Everything you can do with guest keys is also available as actions, for use
+in automations, scripts and dashboards (**Developer tools → Actions**):
+
+| Action | What it does |
+| --- | --- |
+| `simonsvoss_mobilekey.key4friends_list` | Returns every guest key of an account (use `response_variable`). |
+| `simonsvoss_mobilekey.key4friends_get` | Returns the details of one guest key. |
+| `simonsvoss_mobilekey.key4friends_create` | Creates a guest key and emails the invitation. |
+| `simonsvoss_mobilekey.key4friends_update` | Updates a guest key; omitted fields are left unchanged. |
+| `simonsvoss_mobilekey.key4friends_delete` | Revokes a guest key; the guest is notified. |
+
+Example — create a three-day key when a booking calendar event starts:
+
+```yaml
+actions:
+  - action: simonsvoss_mobilekey.key4friends_create
+    data:
+      config_entry_id: YOUR_ENTRY_ID  # use the account picker in the UI
+      name: "{{ trigger.calendar_event.summary }}"
+      email: "{{ trigger.calendar_event.description }}"
+      language: en
+      valid_from: "{{ trigger.calendar_event.start }}"
+      valid_to: "{{ trigger.calendar_event.end }}"
+      locks:
+        - YOUR_LOCK_DEVICE_ID
+      # Optional: names shown to the guest instead of the system lock names.
+      lock_names:
+        YOUR_LOCK_DEVICE_ID: "Main entrance"
+```
+
+`lock_names` (available on `key4friends_create` and `key4friends_update`)
+takes one entry per lock to rename: the device ID of the lock as the key, the
+name shown to the guest as the value. Renamed locks must also be listed in
+`locks`; locks without an entry keep their system name — or, when updating a
+key, the name already shown to the guest. To find the device IDs, pick the
+locks with the UI selectors, then switch the action editor to YAML mode.
+
 ### Refreshing
 
 States refresh automatically when you decide to. The **Refresh** button on the
