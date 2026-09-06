@@ -1,3 +1,7 @@
+[![HACS Passing](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml/badge.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml)
+[![Total Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases)
+[![Latest Release Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/latest/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases/latest)
+
 # SimonsVoss MobileKey for Home Assistant
 
 Bring your SimonsVoss MobileKey locking system into Home Assistant: keep an eye
