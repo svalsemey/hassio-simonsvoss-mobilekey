@@ -2,6 +2,7 @@
 [![HACS Passing](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml/badge.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml)
 [![Total Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases)
 [![Latest Release Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/latest/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases/latest)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-orange?logo=buy-me-a-coffee)](https://www.buymeacoffee.com/sebastien_valsemey)
 
 # SimonsVoss MobileKey for Home Assistant
 
