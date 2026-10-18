@@ -44,7 +44,7 @@ credentials.
 
 1. Add this repository to HACS as a custom repository.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=svalsemey&repository=hassio-simonsvoss-mobilekey&category=integration) 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=svalsemey&repository=hassio-simonsvoss-mobilekey&category=integration)
 
 2. Install **SimonsVoss MobileKey**.
 3. Restart Home Assistant.
@@ -134,21 +134,108 @@ locks with the UI selectors, then switch the action editor to YAML mode.
 
 ### Refreshing
 
-States refresh automatically when you decide to. The **Refresh** button on the
-system device forces an immediate update, for example right afterchanging
-something in the MobileKey app or for active polling after a physical change
-(waiting for locking / unlocking / door opening / door closing). **Do not
-abuse from it!**
+Home Assistant polls the MobileKey cloud at the configured interval (once a
+minute by default) and refreshes every state in a single request. The
+**Refresh** button on the system device forces an immediate update, for
+example right after changing something in the MobileKey app, or while waiting
+for a physical change to be reported (locking, unlocking, a door opening or
+closing). **Use it sparingly** — every press is a request to the MobileKey
+cloud.
+
+## Integration options
+
+Open **Settings → Devices & services → SimonsVoss MobileKey → Configure** and
+choose **Configure the integration** to adjust:
+
+- **Polling interval** — how often Home Assistant fetches the system state
+  from the MobileKey cloud, between 30 seconds and 1 hour (60 seconds by
+  default).
+- **User agent** — the HTTP `User-Agent` header sent to the cloud, mirroring
+  the official mobile application. Only change it if the cloud stops
+  accepting the default one.
+
+The same menu also contains the Key4Friends guest key management described
+above.
+
+## Known limitations
+
+- **PIN code keypads (SmartKeypad) are not supported.** When the cloud
+  reports one, it is skipped with a single log warning and the rest of the
+  installation keeps working. If you own one, please attach a diagnostics
+  file to a GitHub issue so support can be added.
+- MobileKey is a cloud service: there is no local connection to the
+  SmartBridge, and state changes are only visible once the SmartBridge has
+  reported them to the cloud.
+- Commands (remote opening, access list readout) are acknowledged only after
+  the SmartBridge has relayed them to the lock by radio, so they can take a
+  few seconds.
+- The access lists fetched with **Read access list** are viewable in the
+  MobileKey app only; the cloud does not expose their content to third-party
+  clients.
+- Expired guest keys remain listed until you delete them, mirroring the
+  MobileKey apps.
+
+## Removing the integration
+
+1. Go to **Settings → Devices & services → SimonsVoss MobileKey**.
+2. Open the ⋮ menu of the account entry and select **Delete**.
+
+All devices and entities of the account are removed from Home Assistant.
+Nothing is changed in your MobileKey system: locks, keys and guest keys stay
+exactly as they are, and the session opened by Home Assistant simply expires.
+
+> **Note** — deleting a single **guest key device** (as opposed to the whole
+> integration) revokes that Key4Friends key in MobileKey and notifies the
+> guest. Deleting any other device only removes it from Home Assistant; it is
+> recreated at the next refresh as long as MobileKey still reports it.
+
+## Security and privacy
+
+- Home Assistant communicates exclusively with the SimonsVoss MobileKey cloud
+  over HTTPS; the integration opens no local network service.
+- Your MobileKey credentials are stored by Home Assistant in its config entry
+  storage; protect your instance accordingly.
+- Diagnostics downloads automatically redact passwords, email addresses and
+  PIN codes — including inside the raw cloud payloads.
+- To report a vulnerability, please follow the [security policy](SECURITY.md)
+  instead of opening a public issue.
 
 ## Troubleshooting
 
 - **Invalid authentication** — the email address or password is wrong. If you
-  changed your password, Home Assistant will prompt you to re-authenticate.
+  changed your password, Home Assistant prompts you to re-authenticate.
 - **Failed to connect** — Home Assistant could not reach the MobileKey cloud.
   Check your internet connection and try again.
+- **"Skipping unsupported …" warning in the logs** — your system contains a
+  device type the integration does not model, such as a PIN code keypad.
+  Everything else keeps working; please open an issue and attach a
+  diagnostics file so the device can be supported.
+- **Every request suddenly fails** — the MobileKey cloud occasionally stops
+  accepting outdated client versions. Update the integration or, as a
+  stopgap, set a newer **User agent** in the integration options.
 - **A command feels slow** — commands travel through the cloud and then by
   radio to the lock; a few seconds of delay is normal.
-- **Reporting an issue** — open an issue on GitHub and attach the diagnostics
-  file (**Settings → Devices & services → SimonsVoss MobileKey → ⋮ → Download
-  diagnostics**). Passwords and email addresses are automatically removed from
-  this file.
+- **Reporting an issue** — download the diagnostics and attach the file to
+  your GitHub issue: either for the whole account (**Settings → Devices &
+  services → SimonsVoss MobileKey → ⋮ → Download diagnostics**) or for a
+  single device, from its device page. Both include the raw JSON returned by
+  the cloud; passwords, email addresses and PIN codes are automatically
+  redacted, including inside the raw payloads.
+
+To capture debug logs, add the following to your configuration and reproduce
+the problem:
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.simonsvoss_mobilekey: debug
+```
+
+## Contributing
+
+Bug reports and feature requests are welcome on the
+[issue tracker](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/issues);
+please use the provided templates and attach a diagnostics file whenever
+possible. Development guidelines are described in
+[CONTRIBUTING.md](CONTRIBUTING.md).

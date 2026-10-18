@@ -1,10 +1,14 @@
 """Data models for the SimonsVoss MobileKey cloud API."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
+from functools import cache
+import logging
 from typing import Any, Final, Self
+
+_LOGGER = logging.getLogger(__name__)
 
 # Bare DTO type names used to discriminate polymorphic API objects.
 _DTO_TRANSPONDER: Final = "SimonsVoss.Soho.Services.UserGate.DTO.Transponder"
@@ -38,6 +42,68 @@ def parse_datetime(value: Any) -> datetime | None:
         return datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def _printable(value: Any) -> str:
+    """Return the value as text stripped of non-printable characters.
+
+    Some devices report corrupted free-text fields, such as catalog
+    order codes containing control characters; stripping them keeps
+    registry fields and logs clean.
+    """
+    return "".join(char for char in str(value) if char.isprintable()).strip()
+
+
+@cache
+def _log_unsupported_item(kind: str, type_name: str) -> None:
+    """Warn about an API item the models cannot represent.
+
+    The cache keeps one entry per kind and DTO type pair, so recurring
+    polls reporting the same unsupported item do not flood the log.
+    """
+    _LOGGER.warning(
+        "Skipping unsupported %s of type %s reported by the MobileKey cloud;"
+        " the related device is not available in Home Assistant",
+        kind,
+        type_name,
+    )
+
+
+def _parse_api_item[ItemT](
+    raw: Any, factory: Callable[[Mapping[str, Any]], ItemT], kind: str
+) -> ItemT | None:
+    """Build one API item, or None when the factory cannot represent it."""
+    try:
+        item = factory(raw)
+    except (AttributeError, KeyError, TypeError, ValueError) as err:
+        _log_unsupported_item(
+            kind,
+            (dto_type(raw) if isinstance(raw, Mapping) else type(raw).__name__)
+            or "<untyped>",
+        )
+        _LOGGER.debug("Unsupported %s item (%r): %s", kind, err, raw)
+        return None
+    return item
+
+
+def parse_api_items[ItemT](
+    raw_items: Iterable[Any],
+    factory: Callable[[Mapping[str, Any]], ItemT],
+    kind: str,
+) -> list[ItemT]:
+    """Build the items of an API collection, skipping unsupported ones.
+
+    The cloud reports every component of the installation, including
+    device types not modeled here, such as PIN code keypads. Items the
+    factory cannot represent are skipped with a warning instead of
+    failing the whole payload, so a single exotic device never prevents
+    the rest of the installation from loading.
+    """
+    return [
+        item
+        for raw in raw_items
+        if (item := _parse_api_item(raw, factory, kind)) is not None
+    ]
 
 
 def _parse_component[T](
@@ -103,11 +169,15 @@ class MobileKeyCoreComponent:
 
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
-        """Build the component from its API representation."""
+        """Build the component from its API representation.
+
+        Some devices report a corrupted catalog order code; non-printable
+        characters are stripped from it.
+        """
         return cls(
             phi=raw["phi"],
             firmware=raw["firmware"],
-            order_code=raw["orderCode"],
+            order_code=_printable(raw["orderCode"]),
             battery_critical=raw["batteryStatus"] != _BATTERY_OK,
             flip_flop=raw["settings"]["flipFlop"],
             timeout=raw["settings"]["timeout"],
@@ -191,7 +261,9 @@ class MobileKeyIdentMedium:
             phi=info.get("phi"),
             firmware=info.get("firmware"),
             production_date=parse_datetime(info.get("productionDate")),
-            order_code=info.get("orderCode"),
+            order_code=(
+                None if (code := info.get("orderCode")) is None else _printable(code)
+            ),
             long_opening=key_data["longOpening"],
             valid_from=parse_datetime(expiration.get("validFrom")),
             valid_to=parse_datetime(expiration.get("validTo")),
@@ -394,20 +466,34 @@ class MobileKeyLockingSystem:
 
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
-        """Build the locking system from its API representation."""
+        """Build the locking system from its API representation.
+
+        Collections are parsed leniently: items of an unsupported type,
+        such as PIN code keypads, are skipped so the rest of the
+        installation keeps working.
+        """
         return cls(
             name=raw["name"],
             version=parse_datetime(raw["version"]),
-            locks={lock.id: lock for lock in map(MobileKeyLock.from_api, raw["locks"])},
+            locks={
+                lock.id: lock
+                for lock in parse_api_items(raw["locks"], MobileKeyLock.from_api, "lock")
+            },
             ident_media={
                 medium.id: medium
-                for medium in map(MobileKeyIdentMedium.from_api, raw["identMedia"])
+                for medium in parse_api_items(
+                    raw["identMedia"], MobileKeyIdentMedium.from_api, "ident medium"
+                )
             },
             smart_bridges={
                 bridge.id: bridge
-                for bridge in map(MobileKeySmartBridge.from_api, raw["smartBridges"])
+                for bridge in parse_api_items(
+                    raw["smartBridges"], MobileKeySmartBridge.from_api, "SmartBridge"
+                )
             },
             authorizations=tuple(
-                map(MobileKeyAuthorization.from_api, raw["authorizations"])
+                parse_api_items(
+                    raw["authorizations"], MobileKeyAuthorization.from_api, "authorization"
+                )
             ),
         )

@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a problem with the SimonsVoss MobileKey integration.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thank you for taking the time to report a bug. The redacted
+        diagnostics file makes most problems much easier to understand,
+        please attach it whenever possible.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I am running the latest version of the integration.
+          required: true
+        - label: I have searched the existing issues for duplicates.
+          required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      placeholder: "0.1.7"
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2025.12.1"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What happened, and what did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to…
+        2. Press…
+        3. See the error…
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics file
+      description: >-
+        Download the diagnostics (Settings → Devices & services → SimonsVoss
+        MobileKey → ⋮ → Download diagnostics, or from a device page) and drag
+        the file here. Credentials, e-mail addresses and PIN codes are
+        redacted automatically, including inside the raw JSON payloads.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs
+      description: >-
+        Enable debug logging for `custom_components.simonsvoss_mobilekey`,
+        reproduce the problem and paste the relevant log lines here.
+      render: text

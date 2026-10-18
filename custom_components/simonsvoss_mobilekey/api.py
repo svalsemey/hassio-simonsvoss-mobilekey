@@ -35,6 +35,7 @@ from .models import (
     MobileKeyKey4Friends,
     MobileKeyLockingSystem,
     dto_type,
+    parse_api_items,
     parse_datetime,
 )
 
@@ -205,11 +206,25 @@ class MobileKeyApiClient:
         # application does; the parsed form orders successive reports.
         self._version_raw: str | None = None
         self._version: datetime | None = None
+        # Raw payloads of the most recent locking system fetch and
+        # Key4Friends listing, kept verbatim for diagnostics.
+        self._raw_locking_system: Any = None
+        self._raw_key4friends: Any = None
 
     @property
     def version(self) -> datetime | None:
         """Return the most recent system data version reported by the cloud."""
         return self._version
+
+    @property
+    def raw_locking_system(self) -> Any:
+        """Return the raw payload of the most recent locking system fetch."""
+        return self._raw_locking_system
+
+    @property
+    def raw_key4friends(self) -> Any:
+        """Return the raw payload of the most recent Key4Friends listing."""
+        return self._raw_key4friends
 
     @property
     def user_agent(self) -> str:
@@ -337,12 +352,18 @@ class MobileKeyApiClient:
 
     @_reports_api_health
     async def async_get_locking_system(self) -> MobileKeyLockingSystem:
-        """Fetch the full state of the locking system in a single call."""
+        """Fetch the full state of the locking system in a single call.
+
+        The raw payload is kept verbatim so diagnostics can expose it,
+        unsupported device types included.
+        """
         payload = await self._async_request_json(
             hdrs.METH_GET, ENDPOINT_SYSTEM_LOADLOCKING
         )
+        self._raw_locking_system = payload
         # Payloads not matching the documented schema are translated so
-        # callers treat them as retryable communication failures.
+        # callers treat them as retryable communication failures; items of
+        # an unsupported type are skipped during parsing instead.
         try:
             system = MobileKeyLockingSystem.from_api(payload)
         except (AttributeError, KeyError, TypeError, ValueError) as err:
@@ -371,12 +392,18 @@ class MobileKeyApiClient:
 
         The locking system state must have been loaded first: the request
         echoes its version and the returned authorizations reference its
-        locks.
+        locks. The raw payload is kept verbatim so diagnostics can expose
+        it. Keys the models cannot represent are skipped during parsing.
         """
         payload = await self._async_perform_request(_DTO_REQUEST_KEY4FRIENDS_LIST)
+        self._raw_key4friends = payload
         try:
-            return tuple(map(MobileKeyKey4Friends.from_api, payload["keys"]))
-        except (AttributeError, KeyError, TypeError, ValueError) as err:
+            return tuple(
+                parse_api_items(
+                    payload["keys"], MobileKeyKey4Friends.from_api, "Key4Friends key"
+                )
+            )
+        except (KeyError, TypeError) as err:
             _LOGGER.debug("Malformed Key4Friends list payload: %s", payload)
             raise MobileKeyConnectionError(
                 f"Malformed Key4Friends list payload: {err!r}"

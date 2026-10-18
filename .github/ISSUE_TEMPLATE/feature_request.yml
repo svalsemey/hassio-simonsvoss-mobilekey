@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement for the SimonsVoss MobileKey integration.
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the feature
+      description: What should the integration do?
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: >-
+        How would you use this feature? How does the official MobileKey
+        application behave for it, if applicable?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, redacted payloads or anything else that helps.
