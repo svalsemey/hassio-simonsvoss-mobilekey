@@ -6,13 +6,11 @@
         "description": "Logga in med ditt SimonsVoss MobileKey-konto.",
         "data": {
           "username": "Användarnamn",
-          "password": "Lösenord",
-          "scan_interval": "Pollingintervall"
+          "password": "Lösenord"
         },
         "data_description": {
           "username": "E-postadressen för ditt MobileKey-konto.",
-          "password": "Lösenordet för ditt MobileKey-konto.",
-          "scan_interval": "Hur ofta systemstatus hämtas från MobileKey-molnet, i sekunder."
+          "password": "Lösenordet för ditt MobileKey-konto."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "MobileKey-inställningar",
         "data": {
-          "scan_interval": "Pollingintervall",
           "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "Hur ofta låssystemets status hämtas från MobileKey-molnet, i sekunder.",
           "user_agent": "HTTP User-Agent-huvud som skickas med varje begäran till MobileKey-molnet. Ändra det endast om molnet slutar acceptera standardvärdet."
         }
       },

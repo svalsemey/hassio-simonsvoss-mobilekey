@@ -3,7 +3,12 @@
 from functools import partial
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
@@ -37,6 +42,27 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     they can be listed and validated even while no config entry is loaded.
     """
     async_setup_services(hass)
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: MobileKeyConfigEntry) -> bool:
+    """Migrate a config entry to the current schema version."""
+    if entry.version > 1:
+        # Downgrading from a future major schema is not supported.
+        return False
+    if entry.minor_version < 2:
+        # Schema 1.2 dropped the configurable polling interval; the
+        # stale option is removed so it never resurfaces in option
+        # flows or diagnostics.
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                key: value
+                for key, value in entry.options.items()
+                if key != CONF_SCAN_INTERVAL
+            },
+            minor_version=2,
+        )
     return True
 
 

@@ -6,7 +6,7 @@ import logging
 from typing import Final
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_SCAN_INTERVAL, CONF_USERNAME
+from homeassistant.const import CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import device_registry as dr
@@ -18,15 +18,16 @@ from .api import (
     MobileKeyConnectionError,
     MobileKeyError,
 )
-from .const import (
-    CONF_USER_AGENT,
-    DOMAIN,
-    SCANINTERVAL_DEFAULT,
-    USER_AGENT_DEFAULT,
-)
+from .const import CONF_USER_AGENT, DOMAIN, USER_AGENT_DEFAULT
 from .models import MobileKeyKey4Friends, MobileKeyLockingSystem
 
 _LOGGER = logging.getLogger(__name__)
+
+# Fixed polling interval, close to the request rate of the MobileKey
+# mobile application. Users needing a different cadence can disable
+# polling on the config entry and trigger refreshes through the
+# homeassistant.update_entity action.
+_UPDATE_INTERVAL: Final = timedelta(seconds=60)
 
 # Device slug templates, shared by device identifiers and entity unique IDs.
 SLUG_LOCK: Final = "lock_{}"
@@ -85,13 +86,6 @@ def entry_user_agent(entry: MobileKeyConfigEntry) -> str:
     return entry.options.get(CONF_USER_AGENT, USER_AGENT_DEFAULT)
 
 
-def _configured_update_interval(entry: MobileKeyConfigEntry) -> timedelta:
-    """Return the polling interval configured in the entry options."""
-    return timedelta(
-        seconds=entry.options.get(CONF_SCAN_INTERVAL, SCANINTERVAL_DEFAULT)
-    )
-
-
 class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
     """Poll the full locking system state for one MobileKey account."""
 
@@ -109,7 +103,7 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
             _LOGGER,
             config_entry=config_entry,
             name=DOMAIN,
-            update_interval=_configured_update_interval(config_entry),
+            update_interval=_UPDATE_INTERVAL,
         )
         self.client = client
         # The health listener lets the API health binary sensor react to
@@ -127,13 +121,11 @@ class MobileKeyCoordinator(DataUpdateCoordinator[MobileKeyLockingSystem]):
 
     @callback
     def apply_options(self) -> None:
-        """Apply the entry options to the coordinator and its API client.
+        """Apply the entry options to the API client.
 
-        A new polling interval takes effect once the currently scheduled
-        refresh has fired; a new user agent applies from the next request,
-        the session being renewed automatically if the cloud rejects it.
+        A new user agent applies from the next request, the session being
+        renewed automatically if the cloud rejects it.
         """
-        self.update_interval = _configured_update_interval(self.config_entry)
         self.client.user_agent = entry_user_agent(self.config_entry)
 
     @callback

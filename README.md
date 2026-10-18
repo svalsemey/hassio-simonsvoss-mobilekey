@@ -60,8 +60,6 @@ credentials.
 1. Go to **Settings → Devices & services**.
 2. Select **Add integration** and search for **SimonsVoss MobileKey**.
 3. Sign in with your MobileKey email address and password.
-4. Choose how often Home Assistant refreshes the data (once a minute by
-   default, adjustable later in the integration options).
 
 That's it. Your devices are created automatically, and anything you add,
 rename or remove in MobileKey later is reflected in Home Assistant on its own.
@@ -134,22 +132,21 @@ locks with the UI selectors, then switch the action editor to YAML mode.
 
 ### Refreshing
 
-Home Assistant polls the MobileKey cloud at the configured interval (once a
-minute by default) and refreshes every state in a single request. The
-**Refresh** button on the system device forces an immediate update, for
-example right after changing something in the MobileKey app, or while waiting
-for a physical change to be reported (locking, unlocking, a door opening or
-closing). **Use it sparingly** — every press is a request to the MobileKey
-cloud.
+Home Assistant polls the MobileKey cloud at once a minute and refreshes every
+state in a single request. The **Refresh** button on the system device forces
+an immediate update, for example right after changing something in the
+MobileKey app, or while waiting for a physical change to be reported (locking,
+unlocking, a door opening or closing). **Use it sparingly** — every press is a
+request to the MobileKey cloud.
+Need a different cadence? Disable polling in the integration's System options
+(⋮ menu on the account entry) and create an automation that calls the
+homeassistant.update_entity action on any MobileKey entity at the pace you want.
 
 ## Integration options
 
 Open **Settings → Devices & services → SimonsVoss MobileKey → Configure** and
 choose **Configure the integration** to adjust:
 
-- **Polling interval** — how often Home Assistant fetches the system state
-  from the MobileKey cloud, between 30 seconds and 1 hour (60 seconds by
-  default).
 - **User agent** — the HTTP `User-Agent` header sent to the cloud, mirroring
   the official mobile application. Only change it if the cloud stops
   accepting the default one.

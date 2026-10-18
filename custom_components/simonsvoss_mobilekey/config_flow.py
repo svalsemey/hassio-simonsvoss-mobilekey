@@ -20,17 +20,12 @@ from homeassistant.const import (
     CONF_LANGUAGE,
     CONF_NAME,
     CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
     CONF_USERNAME,
-    UnitOfTime,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.selector import (
     DateTimeSelector,
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -53,9 +48,6 @@ from .const import (
     CONF_USER_AGENT,
     DOMAIN,
     KEY4FRIENDS_LANGUAGES,
-    SCANINTERVAL_DEFAULT,
-    SCANINTERVAL_MAX,
-    SCANINTERVAL_MIN,
     USER_AGENT_DEFAULT,
 )
 from .coordinator import MobileKeyCoordinator, entry_user_agent
@@ -72,20 +64,6 @@ CONF_AUTHORIZED_LOCKS: Final = "authorized_locks"
 # later at 23:59:59, in the Home Assistant time zone.
 _DEFAULT_VALIDITY_DAYS: Final = 3
 
-# Polling interval field, shared by the user step and the options flow.
-_SCAN_INTERVAL_SELECTOR = vol.All(
-    NumberSelector(
-        NumberSelectorConfig(
-            min=SCANINTERVAL_MIN,
-            max=SCANINTERVAL_MAX,
-            step=1,
-            mode=NumberSelectorMode.BOX,
-            unit_of_measurement=UnitOfTime.SECONDS,
-        )
-    ),
-    vol.Coerce(int),
-)
-
 _LANGUAGE_SELECTOR = SelectSelector(
     SelectSelectorConfig(
         options=list(KEY4FRIENDS_LANGUAGES),
@@ -100,21 +78,13 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Required(
-            CONF_SCAN_INTERVAL, default=SCANINTERVAL_DEFAULT
-        ): _SCAN_INTERVAL_SELECTOR,
     }
 )
 
 STEP_REAUTH_DATA_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 
 OPTIONS_SCHEMA = vol.Schema(
-    {
-        vol.Required(
-            CONF_SCAN_INTERVAL, default=SCANINTERVAL_DEFAULT
-        ): _SCAN_INTERVAL_SELECTOR,
-        vol.Required(CONF_USER_AGENT, default=USER_AGENT_DEFAULT): TextSelector(),
-    }
+    {vol.Required(CONF_USER_AGENT, default=USER_AGENT_DEFAULT): TextSelector()}
 )
 
 
@@ -497,6 +467,8 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the configuration flow for MobileKey."""
 
     VERSION = 1
+    # Schema 1.2 dropped the scan interval option: polling is fixed.
+    MINOR_VERSION = 2
 
     @staticmethod
     @callback
@@ -553,7 +525,6 @@ class MobileKeyConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME: username,
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
-                    options={CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL]},
                 )
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

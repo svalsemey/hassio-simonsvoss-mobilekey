@@ -6,13 +6,11 @@
         "description": "Melden Sie sich mit Ihrem SimonsVoss MobileKey-Konto an.",
         "data": {
           "username": "Benutzername",
-          "password": "Passwort",
-          "scan_interval": "Abfrageintervall"
+          "password": "Passwort"
         },
         "data_description": {
           "username": "Die E-Mail-Adresse Ihres MobileKey-Kontos.",
-          "password": "Das Passwort Ihres MobileKey-Kontos.",
-          "scan_interval": "Wie oft der Systemstatus von der MobileKey-Cloud abgerufen wird, in Sekunden."
+          "password": "Das Passwort Ihres MobileKey-Kontos."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "MobileKey-Einstellungen",
         "data": {
-          "scan_interval": "Abfrageintervall",
           "user_agent": "User-Agent"
         },
         "data_description": {
-          "scan_interval": "Wie oft der Status der Schließanlage von der MobileKey-Cloud abgerufen wird, in Sekunden.",
           "user_agent": "HTTP-User-Agent-Header, der mit jeder Anfrage an die MobileKey-Cloud gesendet wird. Ändern Sie ihn nur, wenn die Cloud den Standardwert nicht mehr akzeptiert."
         }
       },

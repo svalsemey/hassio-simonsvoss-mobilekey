@@ -30,13 +30,6 @@ COOKIE_AUTH: Final = "mk-auth"
 COOKIE_CLOUDFLARE_BOTMANAGEMENT: Final = "__cf_bm"
 COOKIE_CLOUDFLARE_USER_VID: Final = "_cfuvid"
 
-# Default, minimum and maximum polling period of the cloud service, in
-# seconds. The default stays close to the request rate of the mobile
-# application; the minimum keeps the load on the cloud reasonable.
-SCANINTERVAL_DEFAULT: Final = 60
-SCANINTERVAL_MIN: Final = 30
-SCANINTERVAL_MAX: Final = 3600
-
 # Guest languages supported by Key4Friends invitations, as accepted by
 # the cloud service.
 KEY4FRIENDS_LANGUAGES: Final = ("en", "de", "fr", "it", "nl", "sv", "da")

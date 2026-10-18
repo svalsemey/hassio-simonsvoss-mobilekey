@@ -6,13 +6,11 @@
         "description": "Sign in with your SimonsVoss MobileKey account.",
         "data": {
           "username": "Username",
-          "password": "Password",
-          "scan_interval": "Polling interval"
+          "password": "Password"
         },
         "data_description": {
           "username": "The email address of your MobileKey account.",
-          "password": "The password of your MobileKey account.",
-          "scan_interval": "How often the system state is fetched from the MobileKey cloud, in seconds."
+          "password": "The password of your MobileKey account."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "MobileKey settings",
         "data": {
-          "scan_interval": "Polling interval",
           "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "How often the locking system state is fetched from the MobileKey cloud, in seconds.",
           "user_agent": "HTTP User-Agent header sent with every request to the MobileKey cloud. Change it only if the cloud stops accepting the default one."
         }
       },

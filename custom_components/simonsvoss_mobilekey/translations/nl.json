@@ -6,13 +6,11 @@
         "description": "Log in met uw SimonsVoss MobileKey-account.",
         "data": {
           "username": "Gebruikersnaam",
-          "password": "Wachtwoord",
-          "scan_interval": "Pollinginterval"
+          "password": "Wachtwoord"
         },
         "data_description": {
           "username": "Het e-mailadres van uw MobileKey-account.",
-          "password": "Het wachtwoord van uw MobileKey-account.",
-          "scan_interval": "Hoe vaak de systeemstatus wordt opgehaald bij de MobileKey-cloud, in seconden."
+          "password": "Het wachtwoord van uw MobileKey-account."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "MobileKey-instellingen",
         "data": {
-          "scan_interval": "Pollinginterval",
           "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "Hoe vaak de status van het sluitsysteem wordt opgehaald bij de MobileKey-cloud, in seconden.",
           "user_agent": "HTTP User-Agent-header die met elk verzoek naar de MobileKey-cloud wordt verzonden. Wijzig deze alleen als de cloud de standaardwaarde niet meer accepteert."
         }
       },

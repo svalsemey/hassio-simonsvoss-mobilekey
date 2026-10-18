@@ -6,13 +6,11 @@
         "description": "Accedi con il tuo account SimonsVoss MobileKey.",
         "data": {
           "username": "Nome utente",
-          "password": "Password",
-          "scan_interval": "Intervallo di polling"
+          "password": "Password"
         },
         "data_description": {
           "username": "L'indirizzo email del tuo account MobileKey.",
-          "password": "La password del tuo account MobileKey.",
-          "scan_interval": "Con quale frequenza lo stato del sistema viene recuperato dal cloud MobileKey, in secondi."
+          "password": "La password del tuo account MobileKey."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "Impostazioni MobileKey",
         "data": {
-          "scan_interval": "Intervallo di polling",
           "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "Con quale frequenza lo stato dell'impianto di chiusura viene recuperato dal cloud MobileKey, in secondi.",
           "user_agent": "Intestazione HTTP User-Agent inviata con ogni richiesta al cloud MobileKey. Modificala solo se il cloud smette di accettare quella predefinita."
         }
       },

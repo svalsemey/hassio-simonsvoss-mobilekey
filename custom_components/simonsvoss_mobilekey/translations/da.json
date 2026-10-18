@@ -6,13 +6,11 @@
         "description": "Log ind med din SimonsVoss MobileKey-konto.",
         "data": {
           "username": "Brugernavn",
-          "password": "Adgangskode",
-          "scan_interval": "Pollinginterval"
+          "password": "Adgangskode"
         },
         "data_description": {
           "username": "E-mailadressen for din MobileKey-konto.",
-          "password": "Adgangskoden til din MobileKey-konto.",
-          "scan_interval": "Hvor ofte systemstatus hentes fra MobileKey-skyen, i sekunder."
+          "password": "Adgangskoden til din MobileKey-konto."
         }
       },
       "reauth_confirm": {
@@ -49,11 +47,9 @@
       "settings": {
         "title": "MobileKey-indstillinger",
         "data": {
-          "scan_interval": "Pollinginterval",
           "user_agent": "User agent"
         },
         "data_description": {
-          "scan_interval": "Hvor ofte låsesystemets status hentes fra MobileKey-skyen, i sekunder.",
           "user_agent": "HTTP User-Agent-header, der sendes med hver anmodning til MobileKey-skyen. Skift den kun, hvis skyen stopper med at acceptere standardværdien."
         }
       },
