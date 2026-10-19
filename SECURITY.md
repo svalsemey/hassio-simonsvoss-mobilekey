@@ -25,12 +25,13 @@ delay for a fix before any public disclosure.
   HTTPS; it exposes no local network service.
 - The MobileKey account credentials are stored by Home Assistant in its
   config entry storage; protect the Home Assistant instance accordingly.
-- Diagnostics downloads redact credentials, guest e-mail addresses, PIN codes
-  and the names of Key4Friends guest keys and ident media (key holders),
-  including inside the raw cloud payloads. Hardware identifiers (SmartBridge
-  serial numbers, chip IDs and PHI numbers) are replaced by placeholders that
-  are only consistent within one file. Lock and SmartBridge names are kept.
-  Home Assistant names device diagnostics files after the device: rename the
-  file of a guest key or of an ident medium before sharing it. Review any
-  file before sharing it anyway.
+- Diagnostics downloads redact credentials, guest e-mail addresses, PIN codes,
+  the names of Key4Friends guest keys and ident media (key holders) and the
+  notes shown to guests on their lock authorizations, including inside the
+  raw cloud payloads. Hardware identifiers (SmartBridge serial numbers, chip
+  IDs and PHI numbers) are replaced by placeholders that are only consistent
+  within one file. Lock and SmartBridge names are kept. Home Assistant names
+  device diagnostics files after the device: rename the file of a guest key
+  or of an ident medium before sharing it. Review any file before sharing it
+  anyway.
 - Never share live account credentials in issues or diagnostics.

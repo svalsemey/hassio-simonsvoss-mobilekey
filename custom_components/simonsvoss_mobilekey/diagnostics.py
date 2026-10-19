@@ -30,9 +30,11 @@ TO_REDACT: Final = frozenset(
 # Key4Friends keys and ident media are named after people, the invited
 # guest and the holder of the medium, so their entries are redacted with
 # every name field they carry, at whichever nesting level the cloud
-# reports it. Names are not redacted globally: lock and SmartBridge
-# names describe the installation and are needed for troubleshooting.
-TO_REDACT_PERSONAL: Final = TO_REDACT | {"name"}
+# reports it, together with the free-text notes a Key4Friends lock
+# authorization displays to the guest. Names are not redacted globally:
+# lock and SmartBridge names describe the installation and are needed
+# for troubleshooting.
+TO_REDACT_PERSONAL: Final = TO_REDACT | {"name", "notes"}
 
 # Hardware identifiers, in their modeled and raw spellings: the serial
 # number of SmartBridges, the radio chip IDs through which locks and

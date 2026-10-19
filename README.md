@@ -1,4 +1,4 @@
-![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 [![HACS Passing](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml/badge.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/actions/workflows/validate.yml)
 [![Total Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases)
 [![Latest Release Downloads](https://img.shields.io/github/downloads/svalsemey/hassio-simonsvoss-mobilekey/latest/total.svg)](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/releases/latest)
@@ -42,7 +42,8 @@ credentials.
 
 ### With HACS
 
-1. Add this repository to HACS as a custom repository.
+1. Open HACS in Home Assistant and search for **SimonsVoss MobileKey**, or
+   use the button below.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=svalsemey&repository=hassio-simonsvoss-mobilekey&category=integration)
 
@@ -194,12 +195,13 @@ exactly as they are, and the session opened by Home Assistant simply expires.
 - Your MobileKey credentials are stored by Home Assistant in its config entry
   storage; protect your instance accordingly.
 - Diagnostics downloads automatically redact passwords, email addresses, PIN
-  codes and the names of guest keys and key holders (ident media) — including
-  inside the raw cloud payloads. Hardware identifiers (SmartBridge serial
-  numbers, radio chip IDs and PHI numbers) are replaced by numbered
-  placeholders (`**REDACTED-1**`, `**REDACTED-2**`…) that are consistent
-  within one file, so a lock can still be matched to its SmartBridge. Lock
-  and SmartBridge names are kept, as they are needed for troubleshooting.
+  codes, the names of guest keys and key holders (ident media) and the notes
+  shown to guests on their lock authorizations — including inside the raw
+  cloud payloads. Hardware identifiers (SmartBridge serial numbers, radio
+  chip IDs and PHI numbers) are replaced by numbered placeholders
+  (`**REDACTED-1**`, `**REDACTED-2**`…) that are consistent within one file,
+  so a lock can still be matched to its SmartBridge. Lock and SmartBridge
+  names are kept, as they are needed for troubleshooting.
 - To report a vulnerability, please follow the [security policy](SECURITY.md)
   instead of opening a public issue.
 
@@ -223,11 +225,11 @@ exactly as they are, and the session opened by Home Assistant simply expires.
   services → SimonsVoss MobileKey → ⋮ → Download diagnostics**) or for a
   single device, from its device page. Both include the raw JSON returned by
   the cloud; passwords, email addresses, PIN codes, the names of guest keys
-  and key holders and hardware identifiers are automatically redacted,
-  including inside the raw payloads. Home Assistant names a device
-  diagnostics file after the device, so the file of a guest key or of a key
-  holder carries their name: rename it before attaching it to a public
-  issue. Review the file before attaching it anyway.
+  and key holders, the notes shown to guests and hardware identifiers are
+  automatically redacted, including inside the raw payloads. Home Assistant
+  names a device diagnostics file after the device, so the file of a guest
+  key or of a key holder carries their name: rename it before attaching it to
+  a public issue. Review the file before attaching it anyway.
 
 To capture debug logs, add the following to your configuration and reproduce
 the problem:
