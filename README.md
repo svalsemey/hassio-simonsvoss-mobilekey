@@ -158,8 +158,9 @@ above.
 
 - **PIN code keypads (SmartKeypad) are not supported.** When the cloud
   reports one, it is skipped with a single log warning and the rest of the
-  installation keeps working. If you own one, please attach a diagnostics
-  file to a GitHub issue so support can be added.
+  installation keeps working. If you own one, please open an **Unsupported
+  device** issue and attach the account diagnostics file so support can be
+  added.
 - MobileKey is a cloud service: there is no local connection to the
   SmartBridge, and state changes are only visible once the SmartBridge has
   reported them to the cloud.
@@ -192,8 +193,13 @@ exactly as they are, and the session opened by Home Assistant simply expires.
   over HTTPS; the integration opens no local network service.
 - Your MobileKey credentials are stored by Home Assistant in its config entry
   storage; protect your instance accordingly.
-- Diagnostics downloads automatically redact passwords, email addresses and
-  PIN codes — including inside the raw cloud payloads.
+- Diagnostics downloads automatically redact passwords, email addresses, PIN
+  codes and the names of guest keys and key holders (ident media) — including
+  inside the raw cloud payloads. Hardware identifiers (SmartBridge serial
+  numbers, radio chip IDs and PHI numbers) are replaced by numbered
+  placeholders (`**REDACTED-1**`, `**REDACTED-2**`…) that are consistent
+  within one file, so a lock can still be matched to its SmartBridge. Lock
+  and SmartBridge names are kept, as they are needed for troubleshooting.
 - To report a vulnerability, please follow the [security policy](SECURITY.md)
   instead of opening a public issue.
 
@@ -205,8 +211,8 @@ exactly as they are, and the session opened by Home Assistant simply expires.
   Check your internet connection and try again.
 - **"Skipping unsupported …" warning in the logs** — your system contains a
   device type the integration does not model, such as a PIN code keypad.
-  Everything else keeps working; please open an issue and attach a
-  diagnostics file so the device can be supported.
+  Everything else keeps working; please open an **Unsupported device** issue
+  and attach the account diagnostics file so the device can be supported.
 - **Every request suddenly fails** — the MobileKey cloud occasionally stops
   accepting outdated client versions. Update the integration or, as a
   stopgap, set a newer **User agent** in the integration options.
@@ -216,8 +222,12 @@ exactly as they are, and the session opened by Home Assistant simply expires.
   your GitHub issue: either for the whole account (**Settings → Devices &
   services → SimonsVoss MobileKey → ⋮ → Download diagnostics**) or for a
   single device, from its device page. Both include the raw JSON returned by
-  the cloud; passwords, email addresses and PIN codes are automatically
-  redacted, including inside the raw payloads.
+  the cloud; passwords, email addresses, PIN codes, the names of guest keys
+  and key holders and hardware identifiers are automatically redacted,
+  including inside the raw payloads. Home Assistant names a device
+  diagnostics file after the device, so the file of a guest key or of a key
+  holder carries their name: rename it before attaching it to a public
+  issue. Review the file before attaching it anyway.
 
 To capture debug logs, add the following to your configuration and reproduce
 the problem:
@@ -231,8 +241,9 @@ logger:
 
 ## Contributing
 
-Bug reports and feature requests are welcome on the
-[issue tracker](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/issues);
-please use the provided templates and attach a diagnostics file whenever
-possible. Development guidelines are described in
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Bug reports, feature requests and reports of unsupported devices are welcome
+on the [issue tracker](https://github.com/svalsemey/hassio-simonsvoss-mobilekey/issues);
+please use the matching issue form and attach a diagnostics file whenever
+possible. Security vulnerabilities must be reported privately, as described
+in the [security policy](SECURITY.md). Development guidelines are described
+in [CONTRIBUTING.md](CONTRIBUTING.md).
