@@ -1,28 +1,15 @@
-name: Unsupported device
-description: Report a MobileKey device type the integration skips, such as a PIN code keypad.
+name: Bug report
+description: Report a problem with the SimonsVoss MobileKey integration.
 labels:
-  - enhancement
+  - bug
 body:
   - type: markdown
     attributes:
       value: >-
-        When the cloud reports a device type the integration cannot model,
-        the device is skipped with a `Skipping unsupported …` warning in the
-        logs and the rest of the installation keeps working. Support can
-        only be added from the raw cloud payload describing the device,
-        which the **account** diagnostics file contains: a skipped device
-        has no device page in Home Assistant, so its own diagnostics cannot
-        be downloaded.
-  - type: input
-    id: device
-    attributes:
-      label: Device
-      description: >-
-        Product name and, if known, the order code printed on the device or
-        shown in the MobileKey app.
-      placeholder: "e.g. PIN code keypad"
-    validations:
-      required: true
+        Thank you for taking the time to report a bug. The diagnostics file
+        makes most problems much easier to understand, please attach it
+        whenever possible. Security vulnerabilities must not be reported
+        here: use the private reporting channel described in `SECURITY.md`.
   - type: input
     id: integration_version
     attributes:
@@ -32,40 +19,59 @@ body:
         `custom_components/simonsvoss_mobilekey/manifest.json`.
     validations:
       required: true
-  - type: textarea
-    id: warning
+  - type: input
+    id: ha_version
     attributes:
-      label: Log warning
-      description: Copy the `Skipping unsupported …` warning from **Settings → System → Logs**.
-      render: Text
+      label: Home Assistant version
+      description: Shown in **Settings → About**.
     validations:
       required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What happened, and what did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to…
+        2. Press…
+        3. See the error…
   - type: textarea
     id: diagnostics
     attributes:
-      label: Account diagnostics file
+      label: Diagnostics file
       placeholder: Drag and drop the diagnostics file here. Do not paste its content.
       description: >-
         **Settings → Devices & services → SimonsVoss MobileKey → ⋮ → Download
-        diagnostics**, then drag and drop the file here. Passwords, email
-        addresses, PIN codes, the names of guest keys and key holders and
-        hardware identifiers are redacted automatically, including inside
-        the raw cloud payloads. Review the file before attaching it anyway.
-    validations:
-      required: true
+        diagnostics** for the whole account, or **⋮ → Download diagnostics**
+        on the page of the affected device. Passwords, email addresses, PIN
+        codes, the names of guest keys and key holders and hardware
+        identifiers are redacted automatically, including inside the raw
+        cloud payloads. Home Assistant names a device file after the device:
+        rename the file of a guest key or of a key holder before attaching
+        it. Review the file before attaching it anyway.
   - type: textarea
-    id: expectations
+    id: logs
     attributes:
-      label: What should Home Assistant expose for this device?
+      label: Debug logs
       description: >-
-        The states and commands the MobileKey app offers for this device,
-        and which of them matter to you.
+        Enable debug logging (**⋮ → Enable debug logging** on the integration
+        page, or the `logger` configuration described in the README),
+        reproduce the problem and paste the relevant log lines here.
+      render: txt
   - type: checkboxes
     id: checklist
     attributes:
       label: Before submitting
       options:
-        - label: I have searched the existing issues and this device has not been reported yet.
+        - label: I am running the latest version of the integration.
           required: true
-        - label: I have reviewed the attached file for personal data.
+        - label: I have searched the existing issues and this problem has not been reported yet.
+          required: true
+        - label: I have reviewed any attached file for personal data.
           required: true
