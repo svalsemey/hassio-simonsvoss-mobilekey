@@ -63,7 +63,7 @@ body:
         Enable debug logging (**⋮ → Enable debug logging** on the integration
         page, or the `logger` configuration described in the README),
         reproduce the problem and paste the relevant log lines here.
-      render: txt
+      render: Text
   - type: checkboxes
     id: checklist
     attributes:
