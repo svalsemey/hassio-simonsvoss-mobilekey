@@ -1,0 +1,68 @@
+name: Unsupported device
+description: Report a MobileKey device type the integration skips, such as a PIN code keypad.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        When the cloud reports a device type the integration cannot model, the device is
+        skipped with a `Skipping unsupported …` warning in the logs and the rest of the
+        installation keeps working. Support can only be added from the raw cloud payload
+        describing the device, which the **account** diagnostics file contains: a skipped
+        device has no device page in Home Assistant, so its own diagnostics cannot be
+        downloaded.
+  - type: input
+    id: device
+    validations:
+      required: true
+    attributes:
+      label: Device
+      description: >-
+        Product name and, if known, the order code printed on the device or shown in the
+        MobileKey app.
+      placeholder: "e.g. PIN code keypad"
+  - type: textarea
+    id: warning
+    validations:
+      required: true
+    attributes:
+      label: Log warning
+      description: Copy the `Skipping unsupported …` warning from **Settings → System → Logs**.
+      render: Text
+  - type: textarea
+    id: diagnostics
+    validations:
+      required: true
+    attributes:
+      label: Account diagnostics file
+      placeholder: Drag and drop the diagnostics file here. Do not paste its content.
+      description: >-
+        **Settings → Devices & services → SimonsVoss MobileKey → ⋮ → Download diagnostics**,
+        then drag and drop the file here. Passwords, email addresses, PIN codes, the names
+        of guest keys and key holders and hardware identifiers are redacted automatically,
+        including inside the raw cloud payload. Review the file before attaching it anyway.
+  - type: textarea
+    id: expectations
+    attributes:
+      label: What should Home Assistant expose for this device?
+      description: >-
+        The states and commands the MobileKey app offers for this device, and which of
+        them matter to you.
+  - type: input
+    id: integration_version
+    validations:
+      required: true
+    attributes:
+      label: Integration version
+      description: >-
+        Shown in HACS, or in the `version` field of
+        `custom_components/simonsvoss_mobilekey/manifest.json`.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have searched the existing issues and this device has not been reported yet.
+          required: true
+        - label: I have reviewed the attached file for personal data.
+          required: true

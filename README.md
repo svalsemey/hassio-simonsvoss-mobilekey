@@ -239,6 +239,11 @@ logger:
     custom_components.simonsvoss_mobilekey: debug
 ```
 
+Alternatively, select **⋮ → Enable debug logging** on the integration page
+(**Settings → Devices & services → SimonsVoss MobileKey**), reproduce the
+problem, then select **Disable debug logging**: the captured log is
+downloaded automatically.
+
 ## Contributing
 
 Bug reports, feature requests and reports of unsupported devices are welcome

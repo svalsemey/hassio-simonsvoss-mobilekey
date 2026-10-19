@@ -3,6 +3,12 @@ description: Suggest an improvement for the SimonsVoss MobileKey integration.
 labels:
   - enhancement
 body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thank you for suggesting an improvement. A device type the
+        integration skips with a `Skipping unsupported …` log warning has its
+        own **Unsupported device** template, please use it instead.
   - type: textarea
     id: description
     attributes:
@@ -23,4 +29,17 @@ body:
     id: context
     attributes:
       label: Additional context
-      description: Screenshots, redacted payloads or anything else that helps.
+      description: >-
+        Screenshots, a diagnostics file or anything else that helps. The
+        diagnostics file is redacted automatically; review it before
+        attaching it anyway, and rename a device file named after a guest
+        key or a key holder.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have searched the existing issues and this feature has not been requested yet.
+          required: true
+        - label: I have reviewed any attached file for personal data.
+          required: true

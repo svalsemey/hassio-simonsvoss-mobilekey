@@ -1,66 +1,71 @@
-name: Bug report
-description: Report a problem with the SimonsVoss MobileKey integration.
+name: Unsupported device
+description: Report a MobileKey device type the integration skips, such as a PIN code keypad.
 labels:
-  - bug
+  - enhancement
 body:
   - type: markdown
     attributes:
       value: >-
-        Thank you for taking the time to report a bug. The redacted
-        diagnostics file makes most problems much easier to understand,
-        please attach it whenever possible.
-  - type: checkboxes
-    id: checklist
+        When the cloud reports a device type the integration cannot model,
+        the device is skipped with a `Skipping unsupported …` warning in the
+        logs and the rest of the installation keeps working. Support can
+        only be added from the raw cloud payload describing the device,
+        which the **account** diagnostics file contains: a skipped device
+        has no device page in Home Assistant, so its own diagnostics cannot
+        be downloaded.
+  - type: input
+    id: device
     attributes:
-      label: Checklist
-      options:
-        - label: I am running the latest version of the integration.
-          required: true
-        - label: I have searched the existing issues for duplicates.
-          required: true
+      label: Device
+      description: >-
+        Product name and, if known, the order code printed on the device or
+        shown in the MobileKey app.
+      placeholder: "e.g. PIN code keypad"
+    validations:
+      required: true
   - type: input
     id: integration_version
     attributes:
       label: Integration version
-      placeholder: "0.1.7"
-    validations:
-      required: true
-  - type: input
-    id: ha_version
-    attributes:
-      label: Home Assistant version
-      placeholder: "2025.12.1"
+      description: >-
+        Shown in HACS, or in the `version` field of
+        `custom_components/simonsvoss_mobilekey/manifest.json`.
     validations:
       required: true
   - type: textarea
-    id: description
+    id: warning
     attributes:
-      label: Describe the bug
-      description: What happened, and what did you expect to happen instead?
+      label: Log warning
+      description: Copy the `Skipping unsupported …` warning from **Settings → System → Logs**.
+      render: Text
     validations:
       required: true
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Steps to reproduce
-      placeholder: |
-        1. Go to…
-        2. Press…
-        3. See the error…
   - type: textarea
     id: diagnostics
     attributes:
-      label: Diagnostics file
+      label: Account diagnostics file
+      placeholder: Drag and drop the diagnostics file here. Do not paste its content.
       description: >-
-        Download the diagnostics (Settings → Devices & services → SimonsVoss
-        MobileKey → ⋮ → Download diagnostics, or from a device page) and drag
-        the file here. Credentials, e-mail addresses and PIN codes are
-        redacted automatically, including inside the raw JSON payloads.
+        **Settings → Devices & services → SimonsVoss MobileKey → ⋮ → Download
+        diagnostics**, then drag and drop the file here. Passwords, email
+        addresses, PIN codes, the names of guest keys and key holders and
+        hardware identifiers are redacted automatically, including inside
+        the raw cloud payloads. Review the file before attaching it anyway.
+    validations:
+      required: true
   - type: textarea
-    id: logs
+    id: expectations
     attributes:
-      label: Debug logs
+      label: What should Home Assistant expose for this device?
       description: >-
-        Enable debug logging for `custom_components.simonsvoss_mobilekey`,
-        reproduce the problem and paste the relevant log lines here.
-      render: text
+        The states and commands the MobileKey app offers for this device,
+        and which of them matter to you.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have searched the existing issues and this device has not been reported yet.
+          required: true
+        - label: I have reviewed the attached file for personal data.
+          required: true
