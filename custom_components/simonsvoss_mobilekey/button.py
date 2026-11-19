@@ -17,6 +17,7 @@ from .entity import (
     MobileKeySystemEntity,
     async_setup_dynamic_entities,
 )
+from .models import MobileKeyLock
 
 # Commands are relayed to the locks over the radio network; sending them
 # one at a time avoids flooding the SmartBridge.
@@ -28,6 +29,8 @@ class MobileKeyLockButtonDescription(ButtonEntityDescription):
     """Describes a button sending a command to a MobileKey lock."""
 
     press_fn: Callable[[MobileKeyApiClient, int], Awaitable[None]]
+    exists_fn: Callable[[MobileKeyLock], bool] = lambda _: True
+    available_fn: Callable[[MobileKeyLock], bool] = lambda _: True
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,6 +51,18 @@ DESCRIPTIONS_LOCK: tuple[MobileKeyLockButtonDescription, ...] = (
         translation_key="read_audit_trail",
         entity_category=EntityCategory.DIAGNOSTIC,
         press_fn=lambda client, lock_id: client.async_read_audit_trail(lock_id),
+    ),
+    # Only offered while the door monitoring component requires attention,
+    # as there is no state to reset otherwise.
+    MobileKeyLockButtonDescription(
+        key="reset_door_monitoring",
+        translation_key="reset_door_monitoring",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        press_fn=lambda client, lock_id: client.async_reset_door_monitoring(lock_id),
+        exists_fn=lambda lock: lock.door is not None,
+        available_fn=lambda lock: (
+            lock.door is not None and lock.door.attention_required
+        ),
     ),
 )
 
@@ -81,6 +96,7 @@ async def async_setup_entry(
         lambda coordinator, lock: (
             MobileKeyLockButton(coordinator, description, lock)
             for description in DESCRIPTIONS_LOCK
+            if description.exists_fn(lock)
         ),
     )
 
@@ -96,10 +112,15 @@ class MobileKeyLockButton(MobileKeyLockEntity, ButtonEntity):
         """Return whether a command can currently be sent to the lock.
 
         Commands go through a dedicated endpoint that may succeed while
-        polling fails, so only an in-flight command of this button or the
-        disappearance of the lock makes it unavailable.
+        polling fails, so only an in-flight command of this button, the
+        disappearance of the lock or a lock state making the command
+        pointless makes it unavailable.
         """
-        return not self._command_in_flight and super().available
+        return (
+            not self._command_in_flight
+            and super().available
+            and self.entity_description.available_fn(self.lock)
+        )
 
     async def async_press(self) -> None:
         """Send the command of this button to the lock through the cloud.

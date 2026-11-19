@@ -236,6 +236,12 @@
   },
   "entity": {
     "binary_sensor": {
+      "attention_required": {
+        "name": "Attention required"
+      },
+      "break_in": {
+        "name": "Break-in"
+      },
       "expired": {
         "name": "Expired"
       },
@@ -258,6 +264,9 @@
       },
       "refresh": {
         "name": "Refresh"
+      },
+      "reset_door_monitoring": {
+        "name": "Reset DoorMonitoring state"
       }
     },
     "sensor": {

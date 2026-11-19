@@ -1,6 +1,12 @@
 {
   "entity": {
     "binary_sensor": {
+      "break_in": {
+        "default": "mdi:shield-home",
+        "state": {
+          "on": "mdi:shield-alert"
+        }
+      },
       "expired": {
         "default": "mdi:calendar-check",
         "state": {
@@ -29,6 +35,9 @@
       },
       "refresh": {
         "default": "mdi:refresh"
+      },
+      "reset_door_monitoring": {
+        "default": "mdi:shield-refresh"
       }
     },
     "sensor": {

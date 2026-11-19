@@ -236,6 +236,12 @@
   },
   "entity": {
     "binary_sensor": {
+      "attention_required": {
+        "name": "Kräver uppmärksamhet"
+      },
+      "break_in": {
+        "name": "Inbrott"
+      },
       "expired": {
         "name": "Utgången"
       },
@@ -258,6 +264,9 @@
       },
       "refresh": {
         "name": "Uppdatera"
+      },
+      "reset_door_monitoring": {
+        "name": "Återställ DoorMonitoring-status"
       }
     },
     "sensor": {

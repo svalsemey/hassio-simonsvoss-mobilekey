@@ -28,6 +28,12 @@ _AUTHORIZATION_GRANTED: Final = 1
 # Value of a ``batteryStatus`` field reporting a healthy battery.
 _BATTERY_OK: Final = 0
 
+# Value of a door monitoring ``sensorStatus`` field reporting no issue.
+_SENSOR_OK: Final = 0
+
+# Code of a lock ``alarms`` entry reporting a break-in.
+_ALARM_BREAK_IN: Final = 4
+
 
 def dto_type(raw: Mapping[str, Any]) -> str:
     """Return the bare DTO type name, without the assembly qualifier."""
@@ -189,7 +195,7 @@ class MobileKeyDoorMonitoringComponent:
     """Door monitoring properties of a lock."""
 
     door_status: MobileKeyDoorStatus
-    sensor_status: int
+    attention_required: bool
     open_too_long_timeout: int | None
     bolt_monitoring_disabled: bool
 
@@ -198,7 +204,7 @@ class MobileKeyDoorMonitoringComponent:
         """Build the component from its API representation."""
         return cls(
             door_status=MobileKeyDoorStatus(raw["doorStatus"]),
-            sensor_status=raw["sensorStatus"],
+            attention_required=raw["sensorStatus"] != _SENSOR_OK,
             open_too_long_timeout=raw["settings"]["openTooLongTimeout"],
             bolt_monitoring_disabled=raw["settings"]["deactivateBoltMonitoring"],
         )
@@ -280,9 +286,15 @@ class MobileKeyLock(_ConnectableModel):
     id: int
     name: str
     has_pending_task: bool
+    alarms: tuple[int, ...]
     core: MobileKeyCoreComponent | None
     door: MobileKeyDoorMonitoringComponent | None
     network: MobileKeyNetworkComponent | None
+
+    @property
+    def break_in(self) -> bool:
+        """Return whether the lock currently reports a break-in alarm."""
+        return _ALARM_BREAK_IN in self.alarms
 
     @classmethod
     def from_api(cls, raw: Mapping[str, Any]) -> Self:
@@ -298,6 +310,7 @@ class MobileKeyLock(_ConnectableModel):
             name=raw["name"],
             state=raw["state"],
             has_pending_task=raw.get("pendingTask") is not None,
+            alarms=tuple(raw.get("alarms") or ()),
             core=_parse_component(
                 components, _DTO_CORE_COMPONENT, MobileKeyCoreComponent.from_api
             ),

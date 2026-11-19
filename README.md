@@ -18,16 +18,16 @@ your dashboards and automations.
 - **See your whole system at a glance** — your locks, SmartBridges, keys and
   guest keys appear automatically in Home Assistant, with the names you gave
   them in MobileKey.
-- **Watch your doors** — know whether a door is open or closed and whether it
-  is locked (with compatible locks).
+- **Watch your doors** — know whether a door is open or closed, whether it
+  is locked and whether a break-in is detected (with compatible locks).
 - **Open locks remotely** — from a dashboard button or an automation.
 - **Manage guest keys (Key4Friends)** — invite a guest by email, adjust their
   access later, see when an invitation has expired and revoke it when it is no
   longer needed.
-- **Stay ahead of problems** — battery warnings, connectivity and radio signal
-  quality for every device.
+- **Stay ahead of problems** — battery and door monitoring warnings,
+  connectivity and radio signal quality for every device.
 - **Automate everything** — get notified when a door stays open, when a
-  battery runs low or when a guest key expires.
+  break-in is detected, when a battery runs low or when a guest key expires.
 
 Several MobileKey accounts can be added side by side, each with its own
 credentials.
@@ -69,10 +69,16 @@ rename or remove in MobileKey later is reflected in Home Assistant on its own.
 
 ### Doors and locks
 
-Depending on its capabilities, each lock offers door and lock states, an
-**Open** button for remote opening, a **Read access list** button to fetch its
-latest access history (viewable in the MobileKey app), plus battery,
-connectivity and signal quality indicators.
+Depending on its capabilities, each lock offers door, lock and break-in
+states, an **Open** button for remote opening, a **Read access list** button
+to fetch its latest access history (viewable in the MobileKey app), plus
+battery, door monitoring attention, connectivity and signal quality
+indicators.
+
+On locks with door monitoring, the **Reset DoorMonitoring state** button
+clears a reported break-in once you have checked the door. It is only
+available while the door monitoring requires attention; the cleared state
+shows up in Home Assistant at the next update.
 
 ### Guest keys (Key4Friends)
 

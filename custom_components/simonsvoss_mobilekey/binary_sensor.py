@@ -127,6 +127,23 @@ DESCRIPTIONS_LOCK: tuple[MobileKeyLockBinarySensorDescription, ...] = (
         exists_fn=lambda lock: lock.door is not None,
     ),
     MobileKeyLockBinarySensorDescription(
+        key="break_in",
+        translation_key="break_in",
+        device_class=BinarySensorDeviceClass.TAMPER,
+        is_on_fn=lambda lock: lock.break_in,
+        exists_fn=lambda lock: lock.door is not None,
+    ),
+    MobileKeyLockBinarySensorDescription(
+        key="attention_required",
+        translation_key="attention_required",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_on_fn=lambda lock: (
+            None if lock.door is None else lock.door.attention_required
+        ),
+        exists_fn=lambda lock: lock.door is not None,
+    ),
+    MobileKeyLockBinarySensorDescription(
         key="battery",
         device_class=BinarySensorDeviceClass.BATTERY,
         entity_category=EntityCategory.DIAGNOSTIC,

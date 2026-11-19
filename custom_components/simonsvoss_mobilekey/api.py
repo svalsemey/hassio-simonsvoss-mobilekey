@@ -93,10 +93,15 @@ _DTO_REQUEST_LOCK_OPEN: Final = f"{_DTO_ASSEMBLY}.DTO.OpenLockRequest, {_DTO_ASS
 _DTO_REQUEST_AUDITTRAIL_READ: Final = (
     f"{_DTO_ASSEMBLY}.DTO.ReadAuditTrailRequest, {_DTO_ASSEMBLY}"
 )
+_DTO_REQUEST_DM_STATE_RESET: Final = (
+    f"{_DTO_ASSEMBLY}.DTO.ResetDMStateRequest, {_DTO_ASSEMBLY}"
+)
 # Bare DTO type prefix and suffix shared by every perform-request
 # response, e.g. OkResponse or ListKey4FriendsResponse.
 _DTO_RESPONSE_PREFIX: Final = f"{_DTO_ASSEMBLY}.DTO."
 _DTO_RESPONSE_SUFFIX: Final = "Response"
+# Bare DTO type of the generic acknowledgment of a perform-request command.
+_DTO_RESPONSE_OK: Final = f"{_DTO_RESPONSE_PREFIX}OkResponse"
 
 
 class MobileKeyError(Exception):
@@ -112,8 +117,8 @@ class MobileKeyAuthenticationError(MobileKeyError):
 
 
 def _reports_api_health[**P, R](
-    method: Callable[Concatenate["MobileKeyApiClient", P], Awaitable[R]],
-) -> Callable[Concatenate["MobileKeyApiClient", P], Awaitable[R]]:
+    method: Callable[Concatenate[MobileKeyApiClient, P], Awaitable[R]],
+) -> Callable[Concatenate[MobileKeyApiClient, P], Awaitable[R]]:
     """Report the outcome of a cloud operation to the API health flag.
 
     Both successes and cloud-side failures update the flag; usage errors
@@ -122,7 +127,7 @@ def _reports_api_health[**P, R](
 
     @wraps(method)
     async def wrapper(
-        self: "MobileKeyApiClient", *args: P.args, **kwargs: P.kwargs
+        self: MobileKeyApiClient, *args: P.args, **kwargs: P.kwargs
     ) -> R:
         try:
             result = await method(self, *args, **kwargs)
@@ -147,6 +152,23 @@ def _key4friends_expiration(key: MobileKeyKey4Friends) -> dict[str, str]:
         "validFrom": key.valid_from.isoformat(),
         "validTo": key.valid_to.isoformat(),
     }
+
+
+def _is_response(payload: Any, expected_type: str | None) -> bool:
+    """Return whether a perform-request payload is a valid response DTO.
+
+    The cloud may report business failures with an HTTP 200 status, so
+    the DTO type is checked against the expected one when given, and
+    against the generic response naming pattern otherwise.
+    """
+    if not isinstance(payload, Mapping):
+        return False
+    response_type = dto_type(payload)
+    if expected_type is not None:
+        return response_type == expected_type
+    return response_type.startswith(_DTO_RESPONSE_PREFIX) and response_type.endswith(
+        _DTO_RESPONSE_SUFFIX
+    )
 
 
 # Maximum length of a response body excerpt quoted in error messages.
@@ -387,6 +409,18 @@ class MobileKeyApiClient:
         )
 
     @_reports_api_health
+    async def async_reset_door_monitoring(self, lock_id: int) -> None:
+        """Ask the cloud to reset the door monitoring state of the given lock.
+
+        This clears the break-in alarm and the attention flag reported by
+        the door monitoring component; the cleared state is reflected by
+        the next locking system fetch.
+        """
+        await self._async_perform_request(
+            _DTO_REQUEST_DM_STATE_RESET, {"lockID": lock_id}, _DTO_RESPONSE_OK
+        )
+
+    @_reports_api_health
     async def async_list_key4friends(self) -> tuple[MobileKeyKey4Friends, ...]:
         """Fetch the Key4Friends keys of the locking system.
 
@@ -475,7 +509,10 @@ class MobileKeyApiClient:
         )
 
     async def _async_perform_request(
-        self, request_type: str, payload: Mapping[str, Any] | None = None
+        self,
+        request_type: str,
+        payload: Mapping[str, Any] | None = None,
+        response_type: str | None = None,
     ) -> Any:
         """Submit a command to the perform-request endpoint.
 
@@ -487,8 +524,9 @@ class MobileKeyApiClient:
         state, as the mobile application does, and therefore requires the
         locking system to have been loaded at least once.
         A succeeding command always answers with a response DTO, e.g.
-        ``OkResponse`` or ``ListKey4FriendsResponse``, whose ``version``
-        field reports the resulting system data version; only the most
+        ``OkResponse`` or ``ListKey4FriendsResponse``, checked against
+        ``response_type`` when given. Its ``versionInfo.version`` field
+        reports the resulting system data version; only the most
         recent version is kept, so concurrent calls completing out of
         order never regress it. Lock commands are queued by the cloud and
         only acknowledged once the SmartBridge has relayed them over the
@@ -505,18 +543,14 @@ class MobileKeyApiClient:
             json={"$type": request_type, "version": version, **(payload or {})},
             timeout=_TIMEOUT_COMMAND,
         )
-        if not isinstance(response_payload, Mapping) or not (
-            (response_type := dto_type(response_payload)).startswith(
-                _DTO_RESPONSE_PREFIX
-            )
-            and response_type.endswith(_DTO_RESPONSE_SUFFIX)
-        ):
+        if not _is_response(response_payload, response_type):
             _LOGGER.debug("Unexpected perform-request response: %s", response_payload)
             raise MobileKeyConnectionError(
                 f"Unexpected response to {request_type} from the perform-request"
                 " endpoint"
             )
-        self._track_version(response_payload.get("version"))
+        if isinstance(version_info := response_payload.get("versionInfo"), Mapping):
+            self._track_version(version_info.get("version"))
         return response_payload
 
     async def _async_request_json(self, method: str, url: str, **kwargs: Any) -> Any:
