@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Ritardo avviso porta aperta"
+        "name": "Ritardo avviso porta aperta",
+        "state": {
+          "never": "Mai",
+          "thirty_seconds": "30 secondi",
+          "one_minute": "1 minuto",
+          "two_minutes": "2 minuti",
+          "five_minutes": "5 minuti"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Serrature autorizzate"

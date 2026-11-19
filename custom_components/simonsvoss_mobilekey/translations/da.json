@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Forsinkelse for advarsel om åben dør"
+        "name": "Forsinkelse for advarsel om åben dør",
+        "state": {
+          "never": "Aldrig",
+          "thirty_seconds": "30 sekunder",
+          "one_minute": "1 minut",
+          "two_minutes": "2 minutter",
+          "five_minutes": "5 minutter"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Autoriserede låse"

@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Verzögerung der Türöffnungswarnung"
+        "name": "Verzögerung der Türöffnungswarnung",
+        "state": {
+          "never": "Nie",
+          "thirty_seconds": "30 Sekunden",
+          "one_minute": "1 Minute",
+          "two_minutes": "2 Minuten",
+          "five_minutes": "5 Minuten"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Autorisierte Schlösser"

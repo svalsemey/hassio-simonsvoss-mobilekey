@@ -42,7 +42,10 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "default": "mdi:door-open"
+        "default": "mdi:door-open",
+        "state": {
+          "never": "mdi:bell-off-outline"
+        }
       },
       "ident_medium_authorizations": {
         "default": "mdi:lock-check"

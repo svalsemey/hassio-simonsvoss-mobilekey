@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Fördröjning för larm om öppen dörr"
+        "name": "Fördröjning för larm om öppen dörr",
+        "state": {
+          "never": "Aldrig",
+          "thirty_seconds": "30 sekunder",
+          "one_minute": "1 minut",
+          "two_minutes": "2 minuter",
+          "five_minutes": "5 minuter"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Auktoriserade lås"

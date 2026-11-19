@@ -19,6 +19,9 @@ _DTO_CORE_COMPONENT: Final = "SimonsVoss.Soho.Services.UserGate.DTO.CoreComponen
 _DTO_DM_COMPONENT: Final = "SimonsVoss.Soho.Services.UserGate.DTO.DMComponent"
 _DTO_NETWORK_COMPONENT: Final = "SimonsVoss.Soho.Services.UserGate.DTO.NetworkComponent"
 
+# Name of the enum member standing for values not documented by the API.
+_UNKNOWN_MEMBER: Final = "UNKNOWN"
+
 # Value of a lock or SmartBridge ``state`` field reporting connectivity.
 _CONNECTED_STATE: Final = 2
 
@@ -121,7 +124,24 @@ def _parse_component[T](
     return None if (raw := components.get(dto_type)) is None else factory(raw)
 
 
-class MobileKeyDoorStatus(IntEnum):
+class MobileKeyEnum(IntEnum):
+    """Base enum of an API field, mapping undocumented values to UNKNOWN.
+
+    Every subclass defines an UNKNOWN member.
+    """
+
+    @classmethod
+    def _missing_(cls, value: object) -> Self:
+        """Map values not documented by the API to UNKNOWN."""
+        return cls[_UNKNOWN_MEMBER]
+
+    @property
+    def known(self) -> bool:
+        """Return whether the value is documented by the API."""
+        return self.name != _UNKNOWN_MEMBER
+
+
+class MobileKeyDoorStatus(MobileKeyEnum):
     """Door and bolt state reported by the door monitoring component."""
 
     UNKNOWN = -1
@@ -129,13 +149,19 @@ class MobileKeyDoorStatus(IntEnum):
     CLOSED_LOCKED = 2
     CLOSED_UNLOCKED = 3
 
-    @classmethod
-    def _missing_(cls, value: object) -> Self:
-        """Map values not documented by the API to UNKNOWN."""
-        return cls.UNKNOWN
+
+class MobileKeyDoorOpenAlertDelay(MobileKeyEnum):
+    """Delay after which a door left open raises an alert, if ever."""
+
+    UNKNOWN = -1
+    NEVER = 0
+    THIRTY_SECONDS = 1
+    ONE_MINUTE = 2
+    TWO_MINUTES = 3
+    FIVE_MINUTES = 4
 
 
-class MobileKeySignalQuality(IntEnum):
+class MobileKeySignalQuality(MobileKeyEnum):
     """Radio signal quality, from no connection (0) to optimal (3)."""
 
     UNKNOWN = -1
@@ -143,11 +169,6 @@ class MobileKeySignalQuality(IntEnum):
     WEAK = 1
     GOOD = 2
     EXCELLENT = 3
-
-    @classmethod
-    def _missing_(cls, value: object) -> Self:
-        """Map values not documented by the API to UNKNOWN."""
-        return cls.UNKNOWN
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -196,7 +217,7 @@ class MobileKeyDoorMonitoringComponent:
 
     door_status: MobileKeyDoorStatus
     attention_required: bool
-    open_too_long_timeout: int | None
+    open_too_long_timeout: MobileKeyDoorOpenAlertDelay
     bolt_monitoring_disabled: bool
 
     @classmethod
@@ -205,7 +226,9 @@ class MobileKeyDoorMonitoringComponent:
         return cls(
             door_status=MobileKeyDoorStatus(raw["doorStatus"]),
             attention_required=raw["sensorStatus"] != _SENSOR_OK,
-            open_too_long_timeout=raw["settings"]["openTooLongTimeout"],
+            open_too_long_timeout=MobileKeyDoorOpenAlertDelay(
+                raw["settings"].get("openTooLongTimeout")
+            ),
             bolt_monitoring_disabled=raw["settings"]["deactivateBoltMonitoring"],
         )
 

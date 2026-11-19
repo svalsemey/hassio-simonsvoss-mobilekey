@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Door open alert delay"
+        "name": "Door open alert delay",
+        "state": {
+          "never": "Never",
+          "thirty_seconds": "30 seconds",
+          "one_minute": "1 minute",
+          "two_minutes": "2 minutes",
+          "five_minutes": "5 minutes"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Authorized locks"

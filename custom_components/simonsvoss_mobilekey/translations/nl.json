@@ -271,7 +271,14 @@
     },
     "sensor": {
       "door_open_alert_delay": {
-        "name": "Vertraging deuropenwaarschuwing"
+        "name": "Vertraging deuropenwaarschuwing",
+        "state": {
+          "never": "Nooit",
+          "thirty_seconds": "30 seconden",
+          "one_minute": "1 minuut",
+          "two_minutes": "2 minuten",
+          "five_minutes": "5 minuten"
+        }
       },
       "ident_medium_authorizations": {
         "name": "Geautoriseerde sloten"

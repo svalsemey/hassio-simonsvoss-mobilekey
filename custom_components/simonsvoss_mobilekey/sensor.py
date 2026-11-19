@@ -32,6 +32,8 @@ from .entity import (
     async_setup_dynamic_entities,
 )
 from .models import (
+    MobileKeyDoorOpenAlertDelay,
+    MobileKeyEnum,
     MobileKeyIdentMedium,
     MobileKeyKey4Friends,
     MobileKeyLock,
@@ -44,27 +46,18 @@ from .util import as_local_timestamp, key4friends_lock_summary
 # All states come from the coordinator, no per-entity update is performed.
 PARALLEL_UPDATES = 0
 
-_SIGNAL_QUALITY_OPTIONS: Final = [
-    quality.name.lower()
-    for quality in MobileKeySignalQuality
-    if quality is not MobileKeySignalQuality.UNKNOWN
-]
+
+def _enum_options(enum: type[MobileKeyEnum]) -> list[str]:
+    """Return the sensor options of an API enum, its unknown member excluded."""
+    return [member.name.lower() for member in enum if member.known]
 
 
-def _signal_quality_value(quality: MobileKeySignalQuality) -> str | None:
-    """Return the enum option for a signal quality, or None when unknown."""
-    return None if quality is MobileKeySignalQuality.UNKNOWN else quality.name.lower()
+def _enum_value(member: MobileKeyEnum) -> str | None:
+    """Return the sensor option of an API enum member, or None when unknown."""
+    return member.name.lower() if member.known else None
 
 
-def _door_open_alert_delay(lock: MobileKeyLock) -> int | None:
-    """Return the door-open alert threshold in minutes.
-
-    The cloud reports the threshold minus one minute: the lock raises the
-    alert once the door stays open for longer than the reported value.
-    """
-    if lock.door is None or lock.door.open_too_long_timeout is None:
-        return None
-    return lock.door.open_too_long_timeout + 1
+_SIGNAL_QUALITY_OPTIONS: Final = _enum_options(MobileKeySignalQuality)
 
 
 def _last_update(system: MobileKeyLockingSystem) -> datetime | None:
@@ -161,9 +154,7 @@ DESCRIPTIONS_LOCK: tuple[MobileKeyLockSensorDescription, ...] = (
         options=_SIGNAL_QUALITY_OPTIONS,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda lock: (
-            None
-            if lock.network is None
-            else _signal_quality_value(lock.network.quality)
+            None if lock.network is None else _enum_value(lock.network.quality)
         ),
         exists_fn=lambda lock: lock.network is not None,
     ),
@@ -183,18 +174,16 @@ DESCRIPTIONS_LOCK: tuple[MobileKeyLockSensorDescription, ...] = (
         value_fn=lambda lock: None if lock.core is None else lock.core.timeout,
         exists_fn=lambda lock: lock.core is not None,
     ),
-    # Only created when the door-open alert is configured on the lock.
     MobileKeyLockSensorDescription(
         key="door_open_alert_delay",
         translation_key="door_open_alert_delay",
-        device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.MINUTES,
-        suggested_display_precision=0,
+        device_class=SensorDeviceClass.ENUM,
+        options=_enum_options(MobileKeyDoorOpenAlertDelay),
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=_door_open_alert_delay,
-        exists_fn=lambda lock: (
-            lock.door is not None and lock.door.open_too_long_timeout is not None
+        value_fn=lambda lock: (
+            None if lock.door is None else _enum_value(lock.door.open_too_long_timeout)
         ),
+        exists_fn=lambda lock: lock.door is not None,
     ),
 )
 
@@ -205,7 +194,7 @@ DESCRIPTIONS_SMARTBRIDGE: tuple[MobileKeySmartBridgeSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=_SIGNAL_QUALITY_OPTIONS,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda bridge: _signal_quality_value(bridge.quality),
+        value_fn=lambda bridge: _enum_value(bridge.quality),
     ),
     MobileKeySmartBridgeSensorDescription(
         key="mobile_key_id",
